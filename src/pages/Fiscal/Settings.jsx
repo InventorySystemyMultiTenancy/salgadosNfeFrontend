@@ -13,7 +13,9 @@ export default function Settings() {
         cnpj: data.cnpj ?? "",
         icmsRate: data.icmsRate ?? "0",
         gatewayProvider: data.gatewayProvider,
-        gatewayApiKey: data.gatewayApiKey ?? "",
+        gatewayApiKey: "",
+        hasGatewayApiKey: data.hasGatewayApiKey,
+        gatewayApiKeyPreview: data.gatewayApiKeyPreview,
         environment: data.environment,
         cbsRate: data.cbsRate ?? "0.9",
         ibsUfRate: data.ibsUfRate ?? "0.05",
@@ -34,13 +36,19 @@ export default function Settings() {
     setFeedback("");
 
     try {
-      await fiscalService.updateFiscalSettings({
+      const saved = await fiscalService.updateFiscalSettings({
         ...form,
         icmsRate: Number(form.icmsRate) || 0,
         cbsRate: Number(form.cbsRate) || 0,
         ibsUfRate: Number(form.ibsUfRate) || 0,
         ibsMunRate: Number(form.ibsMunRate) || 0,
       });
+      setForm((current) => ({
+        ...current,
+        gatewayApiKey: "",
+        hasGatewayApiKey: saved.hasGatewayApiKey,
+        gatewayApiKeyPreview: saved.gatewayApiKeyPreview,
+      }));
       setFeedback("Configurações fiscais salvas!");
     } catch (err) {
       setError(err.response?.data?.error || "Erro ao salvar configurações.");
@@ -114,9 +122,15 @@ export default function Settings() {
             <input
               id="gatewayApiKey"
               type="password"
+              placeholder={form.hasGatewayApiKey ? `Configurada (${form.gatewayApiKeyPreview})` : "Nenhuma chave configurada"}
               value={form.gatewayApiKey}
               onChange={(e) => handleChange("gatewayApiKey", e.target.value)}
             />
+            {form.hasGatewayApiKey && (
+              <small style={{ color: "var(--color-muted)" }}>
+                Deixe em branco para manter a chave atual.
+              </small>
+            )}
           </div>
         </div>
 
