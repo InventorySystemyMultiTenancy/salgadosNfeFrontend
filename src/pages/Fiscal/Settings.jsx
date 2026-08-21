@@ -22,6 +22,7 @@ export default function Settings() {
         ibsMunRate: data.ibsMunRate ?? "0.05",
         ibsCbsSituacaoTributaria: data.ibsCbsSituacaoTributaria ?? "000",
         ibsCbsClassificacaoTributaria: data.ibsCbsClassificacaoTributaria ?? "000001",
+        ibsCbsMunicipioCodigo: data.ibsCbsMunicipioCodigo ?? "",
       }),
     );
   }, []);
@@ -194,7 +195,15 @@ export default function Settings() {
               onChange={(e) => handleChange("ibsCbsClassificacaoTributaria", e.target.value)}
             />
           </div>
-          <div />
+          <div>
+            <label htmlFor="ibsCbsMunicipioCodigo">Código IBGE do município (7 dígitos)</label>
+            <input
+              id="ibsCbsMunicipioCodigo"
+              placeholder="ex: 3550308 (São Paulo)"
+              value={form.ibsCbsMunicipioCodigo}
+              onChange={(e) => handleChange("ibsCbsMunicipioCodigo", e.target.value)}
+            />
+          </div>
         </div>
 
         {error && <p className="form-error">{error}</p>}
