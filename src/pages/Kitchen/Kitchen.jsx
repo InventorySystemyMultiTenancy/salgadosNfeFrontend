@@ -8,10 +8,16 @@ const NEXT_LABEL = { PENDING: "Iniciar preparo", PREPARING: "Marcar pronto" };
 
 export default function Kitchen() {
   const [orders, setOrders] = useState([]);
+  const [error, setError] = useState("");
   const socket = useSocket();
 
   useEffect(() => {
-    orderService.fetchKitchenQueue().then(setOrders);
+    orderService
+      .fetchKitchenQueue()
+      .then(setOrders)
+      .catch((err) => {
+        setError(err.response?.data?.error || "Erro ao carregar a fila da cozinha.");
+      });
   }, []);
 
   useEffect(() => {
@@ -78,7 +84,8 @@ export default function Kitchen() {
       )}
 
       <div className="kitchen-queue">
-        {orders.length === 0 && <p className="cart-empty">Nenhum pedido na fila.</p>}
+        {error && <p className="form-error">{error}</p>}
+        {!error && orders.length === 0 && <p className="cart-empty">Nenhum pedido na fila.</p>}
         {orders.map((order) => (
           <div key={order.id} className={`kitchen-card kitchen-card-${order.kitchenStatus.toLowerCase()}`}>
             <header>

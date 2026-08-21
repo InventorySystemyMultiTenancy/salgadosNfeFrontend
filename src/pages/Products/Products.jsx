@@ -10,8 +10,12 @@ export default function Products() {
   const [error, setError] = useState("");
 
   async function loadProducts() {
-    const data = await productService.listProducts();
-    setProducts(data);
+    try {
+      const data = await productService.listProducts();
+      setProducts(data);
+    } catch (err) {
+      setError(err.response?.data?.error || "Erro ao carregar produtos.");
+    }
   }
 
   useEffect(() => {
