@@ -15,6 +15,11 @@ export default function Settings() {
         gatewayProvider: data.gatewayProvider,
         gatewayApiKey: data.gatewayApiKey ?? "",
         environment: data.environment,
+        cbsRate: data.cbsRate ?? "0.9",
+        ibsUfRate: data.ibsUfRate ?? "0.05",
+        ibsMunRate: data.ibsMunRate ?? "0.05",
+        ibsCbsSituacaoTributaria: data.ibsCbsSituacaoTributaria ?? "000",
+        ibsCbsClassificacaoTributaria: data.ibsCbsClassificacaoTributaria ?? "000001",
       }),
     );
   }, []);
@@ -32,6 +37,9 @@ export default function Settings() {
       await fiscalService.updateFiscalSettings({
         ...form,
         icmsRate: Number(form.icmsRate) || 0,
+        cbsRate: Number(form.cbsRate) || 0,
+        ibsUfRate: Number(form.ibsUfRate) || 0,
+        ibsMunRate: Number(form.ibsMunRate) || 0,
       });
       setFeedback("Configurações fiscais salvas!");
     } catch (err) {
@@ -110,6 +118,69 @@ export default function Settings() {
               onChange={(e) => handleChange("gatewayApiKey", e.target.value)}
             />
           </div>
+        </div>
+
+        <h3 style={{ marginTop: "1.5rem" }}>Reforma Tributária (IBS/CBS)</h3>
+        <p className="cart-empty">
+          Obrigatório em toda NFC-e a partir de 2026 (fase de teste). Os valores abaixo são um
+          ponto de partida — <strong>confirme as alíquotas e códigos corretos com seu contador ou
+          o suporte da Focus NFe</strong> antes de considerar uma emissão como válida.
+        </p>
+        <div className="form-row">
+          <div>
+            <label htmlFor="cbsRate">Alíquota CBS (%)</label>
+            <input
+              id="cbsRate"
+              type="number"
+              step="0.01"
+              min="0"
+              value={form.cbsRate}
+              onChange={(e) => handleChange("cbsRate", e.target.value)}
+            />
+          </div>
+          <div>
+            <label htmlFor="ibsUfRate">Alíquota IBS — UF (%)</label>
+            <input
+              id="ibsUfRate"
+              type="number"
+              step="0.01"
+              min="0"
+              value={form.ibsUfRate}
+              onChange={(e) => handleChange("ibsUfRate", e.target.value)}
+            />
+          </div>
+        </div>
+        <div className="form-row">
+          <div>
+            <label htmlFor="ibsMunRate">Alíquota IBS — Município (%)</label>
+            <input
+              id="ibsMunRate"
+              type="number"
+              step="0.01"
+              min="0"
+              value={form.ibsMunRate}
+              onChange={(e) => handleChange("ibsMunRate", e.target.value)}
+            />
+          </div>
+          <div>
+            <label htmlFor="ibsCbsSituacaoTributaria">Situação tributária IBS/CBS (CST)</label>
+            <input
+              id="ibsCbsSituacaoTributaria"
+              value={form.ibsCbsSituacaoTributaria}
+              onChange={(e) => handleChange("ibsCbsSituacaoTributaria", e.target.value)}
+            />
+          </div>
+        </div>
+        <div className="form-row">
+          <div>
+            <label htmlFor="ibsCbsClassificacaoTributaria">Classificação tributária (cClassTrib)</label>
+            <input
+              id="ibsCbsClassificacaoTributaria"
+              value={form.ibsCbsClassificacaoTributaria}
+              onChange={(e) => handleChange("ibsCbsClassificacaoTributaria", e.target.value)}
+            />
+          </div>
+          <div />
         </div>
 
         {error && <p className="form-error">{error}</p>}
