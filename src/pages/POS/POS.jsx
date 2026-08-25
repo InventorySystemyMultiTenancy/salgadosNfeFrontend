@@ -49,7 +49,7 @@ export default function POS() {
     try {
       await orderService.createOrder({
         paymentMethod,
-        clientId: isTab ? Number(clientId) : undefined,
+        clientId: clientId ? Number(clientId) : undefined,
         items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
       });
       clearCart();
@@ -137,20 +137,17 @@ export default function POS() {
           ))}
         </select>
 
-        {isTab && (
-          <>
-            <label htmlFor="client">Cliente</label>
-            <select id="client" value={clientId} onChange={(e) => setClientId(e.target.value)}>
-              <option value="">Selecione...</option>
-              {clients.map((client) => (
-                <option key={client.id} value={client.id}>
-                  {client.name} (saldo R$ {Number(client.currentBalance).toFixed(2)} / limite R${" "}
-                  {Number(client.creditLimit).toFixed(2)})
-                </option>
-              ))}
-            </select>
-          </>
-        )}
+        <label htmlFor="client">Cliente{isTab ? "" : " (opcional, pra nota fiscal)"}</label>
+        <select id="client" value={clientId} onChange={(e) => setClientId(e.target.value)}>
+          <option value="">{isTab ? "Selecione..." : "Consumidor não identificado"}</option>
+          {clients.map((client) => (
+            <option key={client.id} value={client.id}>
+              {isTab
+                ? `${client.name} (saldo R$ ${Number(client.currentBalance).toFixed(2)} / limite R$ ${Number(client.creditLimit).toFixed(2)})`
+                : `${client.name}${client.cnpj ? ` — CNPJ ${client.cnpj}` : client.cpf ? ` — CPF ${client.cpf}` : ""}`}
+            </option>
+          ))}
+        </select>
 
         {error && <p className="form-error">{error}</p>}
         {feedback && <p className="form-success">{feedback}</p>}

@@ -16,6 +16,7 @@ export default function Settings() {
         gatewayApiKey: "",
         hasGatewayApiKey: data.hasGatewayApiKey,
         gatewayApiKeyPreview: data.gatewayApiKeyPreview,
+        gatewayCompanyId: data.gatewayCompanyId ?? "",
         environment: data.environment,
         cbsRate: data.cbsRate ?? "0.9",
         ibsUfRate: data.ibsUfRate ?? "0.05",
@@ -115,6 +116,7 @@ export default function Settings() {
             >
               <option value="NONE">Nenhum (não emite)</option>
               <option value="FOCUS_NFE">Focus NFe</option>
+              <option value="NFEIO">NFe.io (emissão assíncrona, autorização ainda não confirmada automaticamente)</option>
               <option value="PLUGNOTAS">PlugNotas (ainda não implementado)</option>
             </select>
           </div>
@@ -134,6 +136,22 @@ export default function Settings() {
             )}
           </div>
         </div>
+        {form.gatewayProvider === "NFEIO" && (
+          <div className="form-row">
+            <div>
+              <label htmlFor="gatewayCompanyId">Id da empresa na NFe.io</label>
+              <input
+                id="gatewayCompanyId"
+                placeholder="ex: ac903854e3d445d39181365cb6ee690d"
+                value={form.gatewayCompanyId}
+                onChange={(e) => handleChange("gatewayCompanyId", e.target.value)}
+              />
+              <small style={{ color: "var(--color-muted)" }}>
+                Retornado ao criar a empresa em app.nfe.io (POST /v2/companies).
+              </small>
+            </div>
+          </div>
+        )}
 
         <h3 style={{ marginTop: "1.5rem" }}>Reforma Tributária (IBS/CBS)</h3>
         <p className="cart-empty">

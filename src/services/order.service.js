@@ -20,7 +20,7 @@ export async function fetchStockAudit() {
   return data;
 }
 
-export async function fetchOrders() {
-  const { data } = await api.get("/orders");
+export async function fetchOrders({ clientId } = {}) {
+  const { data } = await api.get("/orders", { params: clientId ? { clientId } : undefined });
   return data;
 }
