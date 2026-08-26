@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import * as clientService from "../../services/client.service";
+import * as cnpjService from "../../services/cnpj.service";
 
 const emptyForm = {
   name: "",
@@ -24,6 +25,8 @@ export default function Clients() {
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState("");
+  const [cnpjLookupError, setCnpjLookupError] = useState("");
+  const [lookingUpCnpj, setLookingUpCnpj] = useState(false);
 
   async function loadClients() {
     const data = await clientService.listClients();
@@ -36,6 +39,29 @@ export default function Clients() {
 
   function handleChange(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  async function handleCnpjLookup() {
+    setCnpjLookupError("");
+    const digits = form.cnpj.replace(/\D/g, "");
+    if (digits.length !== 14) {
+      setCnpjLookupError("Digite um CNPJ válido (14 dígitos) antes de buscar.");
+      return;
+    }
+
+    setLookingUpCnpj(true);
+    try {
+      const data = await cnpjService.lookupCnpj(digits);
+      setForm((current) => ({ ...current, ...data }));
+    } catch (err) {
+      setCnpjLookupError(
+        err.response?.status === 404
+          ? "CNPJ não encontrado na Receita Federal."
+          : "Erro ao buscar o CNPJ. Tente novamente.",
+      );
+    } finally {
+      setLookingUpCnpj(false);
+    }
   }
 
   function startEdit(client) {
@@ -135,7 +161,21 @@ export default function Clients() {
           </div>
           <div>
             <label htmlFor="cnpj">CNPJ (cliente pessoa jurídica)</label>
-            <input id="cnpj" value={form.cnpj} onChange={(e) => handleChange("cnpj", e.target.value)} />
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <input
+                id="cnpj"
+                value={form.cnpj}
+                onChange={(e) => handleChange("cnpj", e.target.value)}
+                style={{ flex: 1 }}
+              />
+              <button type="button" onClick={handleCnpjLookup} disabled={lookingUpCnpj}>
+                {lookingUpCnpj ? "Buscando..." : "Buscar"}
+              </button>
+            </div>
+            <small style={{ color: "var(--color-muted)" }}>
+              Preenche nome e endereço automaticamente a partir do CNPJ (dados da Receita Federal).
+            </small>
+            {cnpjLookupError && <p className="form-error">{cnpjLookupError}</p>}
           </div>
         </div>
         <div className="form-row">
@@ -147,8 +187,9 @@ export default function Clients() {
               onChange={(e) => handleChange("stateRegistration", e.target.value)}
             />
             <small style={{ color: "var(--color-muted)" }}>
-              Deixe em branco se o cliente não revende mercadoria (a maioria dos casos) — preencher
-              errado faz a nota fiscal ser recusada pela SEFAZ.
+              A busca por CNPJ acima não traz a IE (é cadastro estadual, não federal — não tem fonte
+              gratuita confiável). Deixe em branco se o cliente não revende mercadoria (a maioria dos
+              casos) — preencher errado faz a nota fiscal ser recusada pela SEFAZ.
             </small>
           </div>
           <div />
