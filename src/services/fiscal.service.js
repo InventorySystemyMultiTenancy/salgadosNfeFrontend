@@ -14,3 +14,8 @@ export async function emitFiscal(orderId) {
   const { data } = await api.post(`/orders/${orderId}/emit-fiscal`);
   return data;
 }
+
+export async function emitFiscalNFe(orderId) {
+  const { data } = await api.post(`/orders/${orderId}/emit-fiscal-nfe`);
+  return data;
+}

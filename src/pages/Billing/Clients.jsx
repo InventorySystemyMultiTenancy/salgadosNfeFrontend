@@ -7,6 +7,7 @@ const emptyForm = {
   phone: "",
   cpf: "",
   cnpj: "",
+  stateRegistration: "",
   dueDay: "",
   creditLimit: "",
   addressStreet: "",
@@ -44,6 +45,7 @@ export default function Clients() {
       phone: client.phone ?? "",
       cpf: client.cpf ?? "",
       cnpj: client.cnpj ?? "",
+      stateRegistration: client.stateRegistration ?? "",
       dueDay: client.dueDay ?? "",
       creditLimit: client.creditLimit,
       addressStreet: client.addressStreet ?? "",
@@ -70,6 +72,7 @@ export default function Clients() {
       phone: form.phone,
       cpf: form.cpf || null,
       cnpj: form.cnpj || null,
+      stateRegistration: form.stateRegistration || null,
       dueDay: form.dueDay ? Number(form.dueDay) : null,
       creditLimit: Number(form.creditLimit) || 0,
       addressStreet: form.addressStreet || null,
@@ -134,6 +137,21 @@ export default function Clients() {
             <label htmlFor="cnpj">CNPJ (cliente pessoa jurídica)</label>
             <input id="cnpj" value={form.cnpj} onChange={(e) => handleChange("cnpj", e.target.value)} />
           </div>
+        </div>
+        <div className="form-row">
+          <div>
+            <label htmlFor="stateRegistration">Inscrição Estadual (só se for contribuinte de ICMS)</label>
+            <input
+              id="stateRegistration"
+              value={form.stateRegistration}
+              onChange={(e) => handleChange("stateRegistration", e.target.value)}
+            />
+            <small style={{ color: "var(--color-muted)" }}>
+              Deixe em branco se o cliente não revende mercadoria (a maioria dos casos) — preencher
+              errado faz a nota fiscal ser recusada pela SEFAZ.
+            </small>
+          </div>
+          <div />
         </div>
         <div className="form-row">
           <div>

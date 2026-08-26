@@ -11,6 +11,7 @@ const STATUS_LABEL = {
   REJECTED: "Rejeitado",
 };
 const PAYMENT_LABEL = { CASH: "Dinheiro", DEBIT: "Débito", CREDIT: "Crédito", PIX: "Pix", TAB: "Fiado" };
+const FISCAL_TYPE_LABEL = { NFCE: "NFC-e", NFE: "NF-e" };
 
 export default function Orders() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -40,10 +41,10 @@ export default function Orders() {
     }
   }
 
-  async function handleEmit(orderId) {
+  async function handleEmit(orderId, emitFn) {
     setErrors((current) => ({ ...current, [orderId]: "" }));
     try {
-      await fiscalService.emitFiscal(orderId);
+      await emitFn(orderId);
       await load();
     } catch (err) {
       setErrors((current) => ({ ...current, [orderId]: err.response?.data?.error || "Erro ao emitir." }));
@@ -84,6 +85,7 @@ export default function Orders() {
             <th>Cliente</th>
             <th>Pagamento</th>
             <th>Total</th>
+            <th>Tipo</th>
             <th>Status fiscal</th>
             <th></th>
           </tr>
@@ -95,6 +97,7 @@ export default function Orders() {
               <td>{order.client?.name || "Não identificado"}</td>
               <td>{PAYMENT_LABEL[order.paymentMethod]}</td>
               <td>R$ {Number(order.totalAmount).toFixed(2)}</td>
+              <td>{order.fiscalType ? FISCAL_TYPE_LABEL[order.fiscalType] : "-"}</td>
               <td>
                 {STATUS_LABEL[order.fiscalStatus]}
                 {order.fiscalStatus === "REJECTED" && order.fiscalError && (
@@ -104,10 +107,28 @@ export default function Orders() {
                   <div className="cart-empty">{order.fiscalError}</div>
                 )}
                 {order.fiscalKey && <div className="cart-empty">Chave: {order.fiscalKey}</div>}
+                {order.fiscalDanfeUrl && (
+                  <div>
+                    <a href={order.fiscalDanfeUrl} target="_blank" rel="noreferrer">
+                      Ver DANFE
+                    </a>
+                    {order.fiscalXmlUrl && (
+                      <>
+                        {" · "}
+                        <a href={order.fiscalXmlUrl} target="_blank" rel="noreferrer">
+                          XML
+                        </a>
+                      </>
+                    )}
+                  </div>
+                )}
               </td>
               <td className="table-actions">
-                <button type="button" onClick={() => handleEmit(order.id)}>
+                <button type="button" onClick={() => handleEmit(order.id, fiscalService.emitFiscal)}>
                   Emitir NFC-e
+                </button>
+                <button type="button" onClick={() => handleEmit(order.id, fiscalService.emitFiscalNFe)}>
+                  Emitir NF-e
                 </button>
                 {errors[order.id] && <div className="form-error">{errors[order.id]}</div>}
               </td>
