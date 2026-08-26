@@ -3,6 +3,7 @@ import * as productService from "../../services/product.service";
 import * as orderService from "../../services/order.service";
 import * as clientService from "../../services/client.service";
 import { useCart } from "../../contexts/CartContext";
+import { IconPlus, IconMinus, IconClose, IconBox, IconReceipt, IconUtensils, IconChevronDown } from "../../components/icons";
 
 const PAYMENT_METHODS = [
   { value: "CASH", label: "Dinheiro" },
@@ -81,11 +82,20 @@ export default function POS() {
                     onClick={() => addItem(product)}
                     disabled={product.stockQuantity <= 0}
                   >
-                    <span className="product-name">{product.name}</span>
-                    <span className="product-price">R$ {Number(product.price).toFixed(2)}</span>
-                    <span className="product-stock">
-                      Estoque: {product.stockQuantity}
-                      {lowStock && <span className="low-stock-badge"> baixo</span>}
+                    <span className="product-card-photo">
+                      <IconUtensils />
+                      <span className="product-card-add">
+                        <IconPlus />
+                      </span>
+                    </span>
+                    <span className="product-card-body">
+                      <span className="product-name">{product.name}</span>
+                      <span className="product-price">R$ {Number(product.price).toFixed(2)}</span>
+                      <span className="product-stock">
+                        <IconBox />
+                        Estoque: {product.stockQuantity}
+                        {lowStock && <span className="low-stock-badge"> baixo</span>}
+                      </span>
                     </span>
                   </button>
                 );
@@ -97,23 +107,34 @@ export default function POS() {
 
       <aside className="cart">
         <h2>Comanda</h2>
-        {items.length === 0 && <p className="cart-empty">Nenhum item adicionado.</p>}
+        {items.length === 0 && (
+          <div className="cart-empty-state">
+            <IconReceipt />
+            <span className="cart-empty">Nenhum item adicionado.</span>
+          </div>
+        )}
         <ul className="cart-items">
           {items.map((item) => (
             <li key={item.productId}>
-              <span>{item.name}</span>
+              <span className="cart-item-thumb">
+                <IconUtensils size={20} />
+              </span>
+              <span className="cart-item-info">
+                <span className="cart-item-name">{item.name}</span>
+                <span className="cart-item-unit">R$ {item.unitPrice.toFixed(2)} cada</span>
+              </span>
               <div className="cart-item-controls">
                 <button type="button" onClick={() => decreaseItem(item.productId)}>
-                  −
+                  <IconMinus />
                 </button>
                 <span>{item.quantity}</span>
                 <button type="button" onClick={() => addItem({ id: item.productId, name: item.name, price: item.unitPrice })}>
-                  +
+                  <IconPlus size={11} strokeWidth="2.6" />
                 </button>
               </div>
-              <span>R$ {(item.unitPrice * item.quantity).toFixed(2)}</span>
+              <span className="cart-item-line-total">R$ {(item.unitPrice * item.quantity).toFixed(2)}</span>
               <button type="button" className="remove-item" onClick={() => removeItem(item.productId)}>
-                ×
+                <IconClose />
               </button>
             </li>
           ))}
@@ -125,29 +146,31 @@ export default function POS() {
         </div>
 
         <label htmlFor="payment-method">Forma de pagamento</label>
-        <select
-          id="payment-method"
-          value={paymentMethod}
-          onChange={(e) => setPaymentMethod(e.target.value)}
-        >
-          {PAYMENT_METHODS.map((method) => (
-            <option key={method.value} value={method.value}>
-              {method.label}
-            </option>
-          ))}
-        </select>
+        <div className="select-wrap">
+          <select id="payment-method" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+            {PAYMENT_METHODS.map((method) => (
+              <option key={method.value} value={method.value}>
+                {method.label}
+              </option>
+            ))}
+          </select>
+          <IconChevronDown />
+        </div>
 
         <label htmlFor="client">Cliente{isTab ? "" : " (opcional, pra nota fiscal)"}</label>
-        <select id="client" value={clientId} onChange={(e) => setClientId(e.target.value)}>
-          <option value="">{isTab ? "Selecione..." : "Consumidor não identificado"}</option>
-          {clients.map((client) => (
-            <option key={client.id} value={client.id}>
-              {isTab
-                ? `${client.name} (saldo R$ ${Number(client.currentBalance).toFixed(2)} / limite R$ ${Number(client.creditLimit).toFixed(2)})`
-                : `${client.name}${client.cnpj ? ` — CNPJ ${client.cnpj}` : client.cpf ? ` — CPF ${client.cpf}` : ""}`}
-            </option>
-          ))}
-        </select>
+        <div className="select-wrap">
+          <select id="client" value={clientId} onChange={(e) => setClientId(e.target.value)}>
+            <option value="">{isTab ? "Selecione..." : "Consumidor não identificado"}</option>
+            {clients.map((client) => (
+              <option key={client.id} value={client.id}>
+                {isTab
+                  ? `${client.name} (saldo R$ ${Number(client.currentBalance).toFixed(2)} / limite R$ ${Number(client.creditLimit).toFixed(2)})`
+                  : `${client.name}${client.cnpj ? ` — CNPJ ${client.cnpj}` : client.cpf ? ` — CPF ${client.cpf}` : ""}`}
+              </option>
+            ))}
+          </select>
+          <IconChevronDown />
+        </div>
 
         {error && <p className="form-error">{error}</p>}
         {feedback && <p className="form-success">{feedback}</p>}
