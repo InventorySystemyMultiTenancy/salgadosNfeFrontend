@@ -32,24 +32,26 @@ export default function Audit() {
         </section>
       )}
 
-      <table className="product-table">
-        <thead>
-          <tr>
-            <th>Operador</th>
-            <th>Produto</th>
-            <th>Quantidade baixada</th>
-          </tr>
-        </thead>
-        <tbody>
-          {audit.map((row) => (
-            <tr key={`${row.sellerId}-${row.productId}`}>
-              <td>{row.sellerName}</td>
-              <td>{row.productName}</td>
-              <td>{row.totalQuantity}</td>
+      <div className="table-scroll">
+        <table className="product-table">
+          <thead>
+            <tr>
+              <th>Operador</th>
+              <th>Produto</th>
+              <th>Quantidade baixada</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {audit.map((row) => (
+              <tr key={`${row.sellerId}-${row.productId}`}>
+                <td>{row.sellerName}</td>
+                <td>{row.productName}</td>
+                <td>{row.totalQuantity}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       {audit.length === 0 && <p className="cart-empty">Nenhuma venda registrada ainda.</p>}
     </div>
   );

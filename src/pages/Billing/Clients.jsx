@@ -161,18 +161,13 @@ export default function Clients() {
           </div>
           <div>
             <label htmlFor="cnpj">CNPJ (cliente pessoa jurídica)</label>
-            <div style={{ display: "flex", gap: "0.5rem" }}>
-              <input
-                id="cnpj"
-                value={form.cnpj}
-                onChange={(e) => handleChange("cnpj", e.target.value)}
-                style={{ flex: 1 }}
-              />
+            <div className="input-with-button">
+              <input id="cnpj" value={form.cnpj} onChange={(e) => handleChange("cnpj", e.target.value)} />
               <button type="button" onClick={handleCnpjLookup} disabled={lookingUpCnpj}>
                 {lookingUpCnpj ? "Buscando..." : "Buscar"}
               </button>
             </div>
-            <small style={{ color: "var(--color-muted)" }}>
+            <small className="field-hint">
               Preenche nome e endereço automaticamente a partir do CNPJ (dados da Receita Federal).
             </small>
             {cnpjLookupError && <p className="form-error">{cnpjLookupError}</p>}
@@ -186,7 +181,7 @@ export default function Clients() {
               value={form.stateRegistration}
               onChange={(e) => handleChange("stateRegistration", e.target.value)}
             />
-            <small style={{ color: "var(--color-muted)" }}>
+            <small className="field-hint">
               A busca por CNPJ acima não traz a IE (é cadastro estadual, não federal — não tem fonte
               gratuita confiável). Deixe em branco se o cliente não revende mercadoria (a maioria dos
               casos) — preencher errado faz a nota fiscal ser recusada pela SEFAZ.
@@ -219,7 +214,7 @@ export default function Clients() {
           </div>
         </div>
 
-        <h3 style={{ marginTop: "1.5rem" }}>Endereço</h3>
+        <h3>Endereço</h3>
         <p className="cart-empty">
           Só é necessário se você emitir nota fiscal em nome desse cliente pela NFe.io — sem
           endereço completo, a emissão pra esse cliente é recusada.
@@ -306,41 +301,43 @@ export default function Clients() {
         </div>
       </form>
 
-      <table className="product-table">
-        <thead>
-          <tr>
-            <th>Nome</th>
-            <th>Telefone</th>
-            <th>CPF/CNPJ</th>
-            <th>Vencimento</th>
-            <th>Limite</th>
-            <th>Saldo devedor</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {clients.map((client) => (
-            <tr key={client.id}>
-              <td>{client.name}</td>
-              <td>{client.phone}</td>
-              <td>{client.cnpj || client.cpf || "-"}</td>
-              <td>{client.dueDay ? `dia ${client.dueDay}` : "-"}</td>
-              <td>R$ {Number(client.creditLimit).toFixed(2)}</td>
-              <td>R$ {Number(client.currentBalance).toFixed(2)}</td>
-              <td className="table-actions">
-                <Link to={`/clientes/${client.id}/extrato`}>Extrato</Link>
-                <Link to={`/fiscal/pedidos?clientId=${client.id}`}>Pedidos/Nota</Link>
-                <button type="button" onClick={() => startEdit(client)}>
-                  Editar
-                </button>
-                <button type="button" className="danger" onClick={() => handleDelete(client.id)}>
-                  Remover
-                </button>
-              </td>
+      <div className="table-scroll">
+        <table className="product-table">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Telefone</th>
+              <th>CPF/CNPJ</th>
+              <th>Vencimento</th>
+              <th>Limite</th>
+              <th>Saldo devedor</th>
+              <th></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {clients.map((client) => (
+              <tr key={client.id}>
+                <td>{client.name}</td>
+                <td>{client.phone}</td>
+                <td>{client.cnpj || client.cpf || "-"}</td>
+                <td>{client.dueDay ? `dia ${client.dueDay}` : "-"}</td>
+                <td>R$ {Number(client.creditLimit).toFixed(2)}</td>
+                <td>R$ {Number(client.currentBalance).toFixed(2)}</td>
+                <td className="table-actions">
+                  <Link to={`/clientes/${client.id}/extrato`}>Extrato</Link>
+                  <Link to={`/fiscal/pedidos?clientId=${client.id}`}>Pedidos/Nota</Link>
+                  <button type="button" onClick={() => startEdit(client)}>
+                    Editar
+                  </button>
+                  <button type="button" className="danger" onClick={() => handleDelete(client.id)}>
+                    Remover
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

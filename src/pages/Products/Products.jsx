@@ -157,42 +157,44 @@ export default function Products() {
         </div>
       </form>
 
-      <table className="product-table">
-        <thead>
-          <tr>
-            <th>Nome</th>
-            <th>Categoria</th>
-            <th>Preço</th>
-            <th>Estoque</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {products.map((product) => {
-            const lowStock =
-              product.minStockAlert != null && product.stockQuantity <= product.minStockAlert;
-            return (
-            <tr key={product.id} className={lowStock ? "low-stock-row" : ""}>
-              <td>{product.name}</td>
-              <td>{product.category}</td>
-              <td>R$ {Number(product.price).toFixed(2)}</td>
-              <td>
-                {product.stockQuantity}
-                {lowStock && <span className="low-stock-badge"> baixo</span>}
-              </td>
-              <td className="table-actions">
-                <button type="button" onClick={() => startEdit(product)}>
-                  Editar
-                </button>
-                <button type="button" className="danger" onClick={() => handleDelete(product.id)}>
-                  Remover
-                </button>
-              </td>
+      <div className="table-scroll">
+        <table className="product-table">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Categoria</th>
+              <th>Preço</th>
+              <th>Estoque</th>
+              <th></th>
             </tr>
-            );
-          })}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {products.map((product) => {
+              const lowStock =
+                product.minStockAlert != null && product.stockQuantity <= product.minStockAlert;
+              return (
+              <tr key={product.id} className={lowStock ? "low-stock-row" : ""}>
+                <td>{product.name}</td>
+                <td>{product.category}</td>
+                <td>R$ {Number(product.price).toFixed(2)}</td>
+                <td>
+                  {product.stockQuantity}
+                  {lowStock && <span className="low-stock-badge"> baixo</span>}
+                </td>
+                <td className="table-actions">
+                  <button type="button" onClick={() => startEdit(product)}>
+                    Editar
+                  </button>
+                  <button type="button" className="danger" onClick={() => handleDelete(product.id)}>
+                    Remover
+                  </button>
+                </td>
+              </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

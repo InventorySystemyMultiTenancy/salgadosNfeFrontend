@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import * as fiscalService from "../../services/fiscal.service";
+import { IconChevronDown } from "../../components/icons";
 
 export default function Settings() {
   const [form, setForm] = useState(null);
@@ -96,29 +97,35 @@ export default function Settings() {
           </div>
           <div>
             <label htmlFor="environment">Ambiente</label>
-            <select
-              id="environment"
-              value={form.environment}
-              onChange={(e) => handleChange("environment", e.target.value)}
-            >
-              <option value="SANDBOX">Homologação (sandbox)</option>
-              <option value="PRODUCTION">Produção</option>
-            </select>
+            <div className="select-wrap">
+              <select
+                id="environment"
+                value={form.environment}
+                onChange={(e) => handleChange("environment", e.target.value)}
+              >
+                <option value="SANDBOX">Homologação (sandbox)</option>
+                <option value="PRODUCTION">Produção</option>
+              </select>
+              <IconChevronDown />
+            </div>
           </div>
         </div>
         <div className="form-row">
           <div>
             <label htmlFor="gatewayProvider">Gateway fiscal</label>
-            <select
-              id="gatewayProvider"
-              value={form.gatewayProvider}
-              onChange={(e) => handleChange("gatewayProvider", e.target.value)}
-            >
-              <option value="NONE">Nenhum (não emite)</option>
-              <option value="FOCUS_NFE">Focus NFe</option>
-              <option value="NFEIO">NFe.io (emissão assíncrona, autorização ainda não confirmada automaticamente)</option>
-              <option value="PLUGNOTAS">PlugNotas (ainda não implementado)</option>
-            </select>
+            <div className="select-wrap">
+              <select
+                id="gatewayProvider"
+                value={form.gatewayProvider}
+                onChange={(e) => handleChange("gatewayProvider", e.target.value)}
+              >
+                <option value="NONE">Nenhum (não emite)</option>
+                <option value="FOCUS_NFE">Focus NFe</option>
+                <option value="NFEIO">NFe.io (emissão assíncrona, autorização ainda não confirmada automaticamente)</option>
+                <option value="PLUGNOTAS">PlugNotas (ainda não implementado)</option>
+              </select>
+              <IconChevronDown />
+            </div>
           </div>
           <div>
             <label htmlFor="gatewayApiKey">API Key do gateway</label>
@@ -130,7 +137,7 @@ export default function Settings() {
               onChange={(e) => handleChange("gatewayApiKey", e.target.value)}
             />
             {form.hasGatewayApiKey && (
-              <small style={{ color: "var(--color-muted)" }}>
+              <small className="field-hint">
                 Deixe em branco para manter a chave atual.
               </small>
             )}
@@ -146,14 +153,14 @@ export default function Settings() {
                 value={form.gatewayCompanyId}
                 onChange={(e) => handleChange("gatewayCompanyId", e.target.value)}
               />
-              <small style={{ color: "var(--color-muted)" }}>
+              <small className="field-hint">
                 Retornado ao criar a empresa em app.nfe.io (POST /v2/companies).
               </small>
             </div>
           </div>
         )}
 
-        <h3 style={{ marginTop: "1.5rem" }}>Reforma Tributária (IBS/CBS)</h3>
+        <h3>Reforma Tributária (IBS/CBS)</h3>
         <p className="cart-empty">
           Obrigatório em toda NFC-e a partir de 2026 (fase de teste). Os valores abaixo são um
           ponto de partida — <strong>confirme as alíquotas e códigos corretos com seu contador ou

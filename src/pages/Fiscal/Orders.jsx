@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import * as orderService from "../../services/order.service";
 import * as fiscalService from "../../services/fiscal.service";
 import * as clientService from "../../services/client.service";
+import { IconChevronDown } from "../../components/icons";
 
 const STATUS_LABEL = {
   NOT_EMITTED: "Não emitido",
@@ -60,14 +61,17 @@ export default function Orders() {
       <div className="form-row">
         <div>
           <label htmlFor="client-filter">Cliente</label>
-          <select id="client-filter" value={clientId} onChange={(e) => handleClientFilterChange(e.target.value)}>
-            <option value="">Todos os pedidos</option>
-            {clients.map((client) => (
-              <option key={client.id} value={client.id}>
-                {client.name} {client.cnpj ? `(CNPJ ${client.cnpj})` : client.cpf ? `(CPF ${client.cpf})` : ""}
-              </option>
-            ))}
-          </select>
+          <div className="select-wrap">
+            <select id="client-filter" value={clientId} onChange={(e) => handleClientFilterChange(e.target.value)}>
+              <option value="">Todos os pedidos</option>
+              {clients.map((client) => (
+                <option key={client.id} value={client.id}>
+                  {client.name} {client.cnpj ? `(CNPJ ${client.cnpj})` : client.cpf ? `(CPF ${client.cpf})` : ""}
+                </option>
+              ))}
+            </select>
+            <IconChevronDown />
+          </div>
         </div>
         <div />
       </div>
@@ -78,64 +82,66 @@ export default function Orders() {
         </p>
       )}
 
-      <table className="product-table">
-        <thead>
-          <tr>
-            <th>Pedido</th>
-            <th>Cliente</th>
-            <th>Pagamento</th>
-            <th>Total</th>
-            <th>Tipo</th>
-            <th>Status fiscal</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {orders.map((order) => (
-            <tr key={order.id}>
-              <td>#{order.id}</td>
-              <td>{order.client?.name || "Não identificado"}</td>
-              <td>{PAYMENT_LABEL[order.paymentMethod]}</td>
-              <td>R$ {Number(order.totalAmount).toFixed(2)}</td>
-              <td>{order.fiscalType ? FISCAL_TYPE_LABEL[order.fiscalType] : "-"}</td>
-              <td>
-                {STATUS_LABEL[order.fiscalStatus]}
-                {order.fiscalStatus === "REJECTED" && order.fiscalError && (
-                  <div className="form-error">{order.fiscalError}</div>
-                )}
-                {order.fiscalStatus === "PENDING" && order.fiscalError && (
-                  <div className="cart-empty">{order.fiscalError}</div>
-                )}
-                {order.fiscalKey && <div className="cart-empty">Chave: {order.fiscalKey}</div>}
-                {order.fiscalDanfeUrl && (
-                  <div>
-                    <a href={order.fiscalDanfeUrl} target="_blank" rel="noreferrer">
-                      Ver DANFE
-                    </a>
-                    {order.fiscalXmlUrl && (
-                      <>
-                        {" · "}
-                        <a href={order.fiscalXmlUrl} target="_blank" rel="noreferrer">
-                          XML
-                        </a>
-                      </>
-                    )}
-                  </div>
-                )}
-              </td>
-              <td className="table-actions">
-                <button type="button" onClick={() => handleEmit(order.id, fiscalService.emitFiscal)}>
-                  Emitir NFC-e
-                </button>
-                <button type="button" onClick={() => handleEmit(order.id, fiscalService.emitFiscalNFe)}>
-                  Emitir NF-e
-                </button>
-                {errors[order.id] && <div className="form-error">{errors[order.id]}</div>}
-              </td>
+      <div className="table-scroll">
+        <table className="product-table">
+          <thead>
+            <tr>
+              <th>Pedido</th>
+              <th>Cliente</th>
+              <th>Pagamento</th>
+              <th>Total</th>
+              <th>Tipo</th>
+              <th>Status fiscal</th>
+              <th></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {orders.map((order) => (
+              <tr key={order.id}>
+                <td>#{order.id}</td>
+                <td>{order.client?.name || "Não identificado"}</td>
+                <td>{PAYMENT_LABEL[order.paymentMethod]}</td>
+                <td>R$ {Number(order.totalAmount).toFixed(2)}</td>
+                <td>{order.fiscalType ? FISCAL_TYPE_LABEL[order.fiscalType] : "-"}</td>
+                <td>
+                  {STATUS_LABEL[order.fiscalStatus]}
+                  {order.fiscalStatus === "REJECTED" && order.fiscalError && (
+                    <div className="form-error">{order.fiscalError}</div>
+                  )}
+                  {order.fiscalStatus === "PENDING" && order.fiscalError && (
+                    <div className="cart-empty">{order.fiscalError}</div>
+                  )}
+                  {order.fiscalKey && <div className="cart-empty">Chave: {order.fiscalKey}</div>}
+                  {order.fiscalDanfeUrl && (
+                    <div>
+                      <a href={order.fiscalDanfeUrl} target="_blank" rel="noreferrer">
+                        Ver DANFE
+                      </a>
+                      {order.fiscalXmlUrl && (
+                        <>
+                          {" · "}
+                          <a href={order.fiscalXmlUrl} target="_blank" rel="noreferrer">
+                            XML
+                          </a>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </td>
+                <td className="table-actions">
+                  <button type="button" onClick={() => handleEmit(order.id, fiscalService.emitFiscal)}>
+                    Emitir NFC-e
+                  </button>
+                  <button type="button" onClick={() => handleEmit(order.id, fiscalService.emitFiscalNFe)}>
+                    Emitir NF-e
+                  </button>
+                  {errors[order.id] && <div className="form-error">{errors[order.id]}</div>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       {orders.length === 0 && <p className="cart-empty">Nenhum pedido registrado ainda.</p>}
     </div>
   );

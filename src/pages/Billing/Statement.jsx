@@ -50,39 +50,39 @@ export default function Statement() {
         {Number(client.creditLimit).toFixed(2)}
       </p>
 
-      <table className="product-table">
-        <thead>
-          <tr>
-            <th>Data</th>
-            <th>Tipo</th>
-            <th>Descrição</th>
-            <th>Valor</th>
-          </tr>
-        </thead>
-        <tbody>
-          {entries.map((entry, index) => (
-            <tr key={index}>
-              <td>{new Date(entry.date).toLocaleDateString("pt-BR")}</td>
-              <td>{entry.type === "charge" ? "Consumo" : "Pagamento"}</td>
-              <td>{entry.description}</td>
-              <td>{entry.type === "charge" ? "+" : "-"}R$ {entry.amount.toFixed(2)}</td>
+      <div className="table-scroll">
+        <table className="product-table">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Tipo</th>
+              <th>Descrição</th>
+              <th>Valor</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {entries.map((entry, index) => (
+              <tr key={index}>
+                <td>{new Date(entry.date).toLocaleDateString("pt-BR")}</td>
+                <td>{entry.type === "charge" ? "Consumo" : "Pagamento"}</td>
+                <td>{entry.description}</td>
+                <td>{entry.type === "charge" ? "+" : "-"}R$ {entry.amount.toFixed(2)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-      <div className="form-actions" style={{ marginTop: "1rem" }}>
+      <div className="form-actions">
         <button type="button" onClick={handleCopy}>
           Copiar texto do extrato
         </button>
-        <a href={whatsappLink} target="_blank" rel="noreferrer">
-          <button type="button" className="secondary">
-            Enviar via WhatsApp
-          </button>
+        <a href={whatsappLink} target="_blank" rel="noreferrer" className="secondary">
+          Enviar via WhatsApp
         </a>
       </div>
 
-      <form className="product-form" onSubmit={handleSettle} style={{ marginTop: "1.5rem" }}>
+      <form className="product-form mt-lg" onSubmit={handleSettle}>
         <label htmlFor="amount">Registrar pagamento (total ou parcial)</label>
         <input
           id="amount"

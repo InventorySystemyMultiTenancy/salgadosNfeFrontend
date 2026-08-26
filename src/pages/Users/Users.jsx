@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import * as userService from "../../services/user.service";
+import { IconChevronDown } from "../../components/icons";
 
 const ROLE_LABEL = { ADMIN: "Administrador", SELLER: "Vendedor", KITCHEN: "Cozinha" };
 const emptyForm = { name: "", email: "", password: "", role: "SELLER" };
@@ -72,11 +73,14 @@ export default function Users() {
           </div>
           <div>
             <label htmlFor="role">Perfil</label>
-            <select id="role" value={form.role} onChange={(e) => handleChange("role", e.target.value)}>
-              <option value="SELLER">Vendedor</option>
-              <option value="KITCHEN">Cozinha</option>
-              <option value="ADMIN">Administrador</option>
-            </select>
+            <div className="select-wrap">
+              <select id="role" value={form.role} onChange={(e) => handleChange("role", e.target.value)}>
+                <option value="SELLER">Vendedor</option>
+                <option value="KITCHEN">Cozinha</option>
+                <option value="ADMIN">Administrador</option>
+              </select>
+              <IconChevronDown />
+            </div>
           </div>
         </div>
 
@@ -88,24 +92,26 @@ export default function Users() {
         </div>
       </form>
 
-      <table className="product-table">
-        <thead>
-          <tr>
-            <th>Nome</th>
-            <th>Email</th>
-            <th>Perfil</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((user) => (
-            <tr key={user.id}>
-              <td>{user.name}</td>
-              <td>{user.email}</td>
-              <td>{ROLE_LABEL[user.role]}</td>
+      <div className="table-scroll">
+        <table className="product-table">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Email</th>
+              <th>Perfil</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {users.map((user) => (
+              <tr key={user.id}>
+                <td>{user.name}</td>
+                <td>{user.email}</td>
+                <td>{ROLE_LABEL[user.role]}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
