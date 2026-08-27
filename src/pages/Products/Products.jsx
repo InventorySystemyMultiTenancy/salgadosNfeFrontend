@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import * as productService from "../../services/product.service";
+import { IconUtensils } from "../../components/icons";
 
 const emptyForm = { name: "", category: "", price: "", stockQuantity: "", ncm: "", cfop: "", minStockAlert: "" };
 
@@ -8,6 +9,8 @@ export default function Products() {
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState("");
+  const [uploadingId, setUploadingId] = useState(null);
+  const [uploadError, setUploadError] = useState("");
 
   async function loadProducts() {
     try {
@@ -75,6 +78,23 @@ export default function Products() {
     if (!confirm("Remover este produto?")) return;
     await productService.deleteProduct(id);
     await loadProducts();
+  }
+
+  async function handlePhotoChange(id, event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    setUploadError("");
+    setUploadingId(id);
+    try {
+      await productService.uploadProductImage(id, file);
+      await loadProducts();
+    } catch (err) {
+      setUploadError(err.response?.data?.error || "Erro ao enviar a foto.");
+    } finally {
+      setUploadingId(null);
+    }
   }
 
   return (
@@ -157,10 +177,13 @@ export default function Products() {
         </div>
       </form>
 
+      {uploadError && <p className="form-error">{uploadError}</p>}
+
       <div className="table-scroll">
         <table className="product-table">
           <thead>
             <tr>
+              <th>Foto</th>
               <th>Nome</th>
               <th>Categoria</th>
               <th>Preço</th>
@@ -174,6 +197,28 @@ export default function Products() {
                 product.minStockAlert != null && product.stockQuantity <= product.minStockAlert;
               return (
               <tr key={product.id} className={lowStock ? "low-stock-row" : ""}>
+                <td>
+                  <label className="product-photo-cell" htmlFor={`photo-${product.id}`}>
+                    {product.imageUrl ? (
+                      <img src={product.imageUrl} alt="" />
+                    ) : (
+                      <span className="product-photo-placeholder">
+                        <IconUtensils size={18} />
+                      </span>
+                    )}
+                    <span className="product-photo-label">
+                      {uploadingId === product.id ? "Enviando..." : "Alterar"}
+                    </span>
+                  </label>
+                  <input
+                    id={`photo-${product.id}`}
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    disabled={uploadingId === product.id}
+                    onChange={(e) => handlePhotoChange(product.id, e)}
+                  />
+                </td>
                 <td>{product.name}</td>
                 <td>{product.category}</td>
                 <td>R$ {Number(product.price).toFixed(2)}</td>

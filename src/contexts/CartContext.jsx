@@ -15,7 +15,13 @@ export function CartProvider({ children }) {
       }
       return [
         ...current,
-        { productId: product.id, name: product.name, unitPrice: Number(product.price), quantity: 1 },
+        {
+          productId: product.id,
+          name: product.name,
+          unitPrice: Number(product.price),
+          imageUrl: product.imageUrl ?? null,
+          quantity: 1,
+        },
       ];
     });
   }

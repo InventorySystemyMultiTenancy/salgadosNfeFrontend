@@ -83,7 +83,7 @@ export default function POS() {
                     disabled={product.stockQuantity <= 0}
                   >
                     <span className="product-card-photo">
-                      <IconUtensils />
+                      {product.imageUrl ? <img src={product.imageUrl} alt="" /> : <IconUtensils />}
                       <span className="product-card-add">
                         <IconPlus />
                       </span>
@@ -117,7 +117,7 @@ export default function POS() {
           {items.map((item) => (
             <li key={item.productId}>
               <span className="cart-item-thumb">
-                <IconUtensils size={20} />
+                {item.imageUrl ? <img src={item.imageUrl} alt="" /> : <IconUtensils size={20} />}
               </span>
               <span className="cart-item-info">
                 <span className="cart-item-name">{item.name}</span>
@@ -128,7 +128,12 @@ export default function POS() {
                   <IconMinus />
                 </button>
                 <span>{item.quantity}</span>
-                <button type="button" onClick={() => addItem({ id: item.productId, name: item.name, price: item.unitPrice })}>
+                <button
+                  type="button"
+                  onClick={() =>
+                    addItem({ id: item.productId, name: item.name, price: item.unitPrice, imageUrl: item.imageUrl })
+                  }
+                >
                   <IconPlus size={11} strokeWidth="2.6" />
                 </button>
               </div>
