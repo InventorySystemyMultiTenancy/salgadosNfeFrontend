@@ -1,10 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as productService from "../../services/product.service";
 import * as orderService from "../../services/order.service";
 import * as clientService from "../../services/client.service";
 import { useCart } from "../../contexts/CartContext";
 import { useCustomerDisplay } from "../../hooks/useCustomerDisplay";
-import { IconPlus, IconMinus, IconClose, IconBox, IconReceipt, IconUtensils, IconChevronDown } from "../../components/icons";
+import {
+  IconPlus,
+  IconMinus,
+  IconClose,
+  IconBox,
+  IconReceipt,
+  IconUtensils,
+  IconChevronDown,
+  IconSearch,
+} from "../../components/icons";
 
 const PAYMENT_METHODS = [
   { value: "CASH", label: "Dinheiro" },
@@ -14,45 +23,105 @@ const PAYMENT_METHODS = [
   { value: "TAB", label: "Fiado (Caderneta)" },
 ];
 
+function matchesSearch(product, term) {
+  if (!term) return true;
+  return product.name.toLowerCase().includes(term) || String(product.id) === term;
+}
+
 export default function POS() {
   const [products, setProducts] = useState([]);
   const [clients, setClients] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [clientId, setClientId] = useState("");
+  const [cashReceived, setCashReceived] = useState("");
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [cashReceived, setCashReceived] = useState("");
   const { items, addItem, decreaseItem, removeItem, clearCart, total } = useCart();
   const display = useCustomerDisplay();
+  const searchInputRef = useRef(null);
 
   useEffect(() => {
     productService.listProducts().then(setProducts);
     clientService.listClients().then(setClients);
   }, []);
 
+  // Atalhos de busca rápida: Ctrl+K ou F2 focam o campo, de qualquer lugar da tela.
+  useEffect(() => {
+    function handleGlobalKeyDown(e) {
+      if (isCheckoutOpen) return;
+      if (e.key === "F2" || (e.ctrlKey && e.key.toLowerCase() === "k")) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      }
+    }
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [isCheckoutOpen]);
+
+  useEffect(() => {
+    if (!isCheckoutOpen) return;
+    function handleEscape(e) {
+      if (e.key === "Escape") setIsCheckoutOpen(false);
+    }
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [isCheckoutOpen]);
+
   const isTab = paymentMethod === "TAB";
   const isCash = paymentMethod === "CASH";
   const receivedValue = cashReceived === "" ? null : Number(cashReceived);
   const troco = receivedValue != null ? receivedValue - total : null;
 
-  // Mantém o display de cliente atualizado conforme o carrinho e o pagamento mudam.
+  // Mantém o display de cliente atualizado: total durante a montagem do pedido, e
+  // pagar/troco só quando o operador está de fato fechando a venda em dinheiro.
   useEffect(() => {
     if (!display.isConnected) return;
 
-    if (isCash && troco != null) {
+    if (isCheckoutOpen && isCash && troco != null) {
       if (troco >= 0) display.sendAmount(troco, "troco");
       else display.sendAmount(total, "pagar");
     } else {
       display.sendAmount(total, "total");
     }
-  }, [display.isConnected, total, isCash, troco]);
+  }, [display.isConnected, total, isCheckoutOpen, isCash, troco]);
 
-  const productsByCategory = products.reduce((groups, product) => {
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const filteredProducts = products.filter((product) => matchesSearch(product, normalizedSearch));
+  const productsByCategory = filteredProducts.reduce((groups, product) => {
     groups[product.category] ??= [];
     groups[product.category].push(product);
     return groups;
   }, {});
+
+  function handleSearchKeyDown(e) {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+
+    const term = searchTerm.trim();
+    if (!term) return;
+
+    const match = /^\d+$/.test(term)
+      ? products.find((product) => product.id === Number(term))
+      : filteredProducts.length === 1
+        ? filteredProducts[0]
+        : null;
+
+    if (match && match.stockQuantity > 0) {
+      addItem(match);
+      setSearchTerm("");
+    }
+  }
+
+  function openCheckout() {
+    if (items.length === 0) return;
+    setError("");
+    setFeedback("");
+    setIsCheckoutOpen(true);
+  }
 
   async function handleCheckout() {
     if (items.length === 0) return;
@@ -63,7 +132,6 @@ export default function POS() {
 
     setSubmitting(true);
     setError("");
-    setFeedback("");
 
     try {
       await orderService.createOrder({
@@ -75,6 +143,7 @@ export default function POS() {
       setClientId("");
       setCashReceived("");
       display.clear();
+      setIsCheckoutOpen(false);
       setFeedback("Venda registrada com sucesso!");
       productService.listProducts().then(setProducts);
     } catch (err) {
@@ -87,6 +156,23 @@ export default function POS() {
   return (
     <div className="pos-page">
       <div className="pos-products">
+        <div className="pos-search">
+          <IconSearch />
+          <input
+            ref={searchInputRef}
+            type="text"
+            placeholder="Buscar por nome ou código do item..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={handleSearchKeyDown}
+          />
+          <span className="pos-search-hint">Ctrl+K / F2</span>
+        </div>
+
+        {filteredProducts.length === 0 && (
+          <p className="pos-search-empty">Nenhum item encontrado para &quot;{searchTerm}&quot;.</p>
+        )}
+
         {Object.entries(productsByCategory).map(([category, categoryProducts]) => (
           <section key={category}>
             <h2>{category}</h2>
@@ -103,6 +189,7 @@ export default function POS() {
                     disabled={product.stockQuantity <= 0}
                   >
                     <span className="product-card-photo">
+                      <span className="product-code">#{product.id}</span>
                       {product.imageUrl ? <img src={product.imageUrl} alt="" /> : <IconUtensils />}
                       <span className="product-card-add">
                         <IconPlus />
@@ -188,72 +275,101 @@ export default function POS() {
           <strong>R$ {total.toFixed(2)}</strong>
         </div>
 
-        <label htmlFor="payment-method">Forma de pagamento</label>
-        <div className="select-wrap">
-          <select
-            id="payment-method"
-            value={paymentMethod}
-            onChange={(e) => {
-              setPaymentMethod(e.target.value);
-              setCashReceived("");
-            }}
-          >
-            {PAYMENT_METHODS.map((method) => (
-              <option key={method.value} value={method.value}>
-                {method.label}
-              </option>
-            ))}
-          </select>
-          <IconChevronDown />
-        </div>
-
-        {isCash && (
-          <>
-            <label htmlFor="cash-received">Valor recebido</label>
-            <input
-              id="cash-received"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="0.00"
-              value={cashReceived}
-              onChange={(e) => setCashReceived(e.target.value)}
-            />
-            {troco != null && (
-              <p className={troco >= 0 ? "form-success" : "form-error"}>
-                {troco >= 0 ? `Troco: R$ ${troco.toFixed(2)}` : `Faltam R$ ${Math.abs(troco).toFixed(2)}`}
-              </p>
-            )}
-          </>
-        )}
-
-        <label htmlFor="client">Cliente{isTab ? "" : " (opcional, pra nota fiscal)"}</label>
-        <div className="select-wrap">
-          <select id="client" value={clientId} onChange={(e) => setClientId(e.target.value)}>
-            <option value="">{isTab ? "Selecione..." : "Consumidor não identificado"}</option>
-            {clients.map((client) => (
-              <option key={client.id} value={client.id}>
-                {isTab
-                  ? `${client.name} (saldo R$ ${Number(client.currentBalance).toFixed(2)} / limite R$ ${Number(client.creditLimit).toFixed(2)})`
-                  : `${client.name}${client.cnpj ? ` — CNPJ ${client.cnpj}` : client.cpf ? ` — CPF ${client.cpf}` : ""}`}
-              </option>
-            ))}
-          </select>
-          <IconChevronDown />
-        </div>
-
-        {error && <p className="form-error">{error}</p>}
         {feedback && <p className="form-success">{feedback}</p>}
 
         <button
           type="button"
           className="checkout-button"
-          onClick={handleCheckout}
-          disabled={items.length === 0 || submitting}
+          onClick={openCheckout}
+          disabled={items.length === 0}
         >
-          {submitting ? "Finalizando..." : "Finalizar Venda"}
+          Cobrar / Fechar Pedido
         </button>
       </aside>
+
+      {isCheckoutOpen && (
+        <div className="checkout-modal-overlay" onClick={() => !submitting && setIsCheckoutOpen(false)}>
+          <div className="checkout-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Fechar Pedido</h2>
+
+            <div className="checkout-modal-total">
+              <span>Total</span>
+              <strong>R$ {total.toFixed(2)}</strong>
+            </div>
+
+            <label htmlFor="payment-method">Forma de pagamento</label>
+            <div className="select-wrap">
+              <select
+                id="payment-method"
+                value={paymentMethod}
+                onChange={(e) => {
+                  setPaymentMethod(e.target.value);
+                  setCashReceived("");
+                }}
+              >
+                {PAYMENT_METHODS.map((method) => (
+                  <option key={method.value} value={method.value}>
+                    {method.label}
+                  </option>
+                ))}
+              </select>
+              <IconChevronDown />
+            </div>
+
+            {isCash && (
+              <>
+                <label htmlFor="cash-received">Valor recebido</label>
+                <input
+                  id="cash-received"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={cashReceived}
+                  onChange={(e) => setCashReceived(e.target.value)}
+                  autoFocus
+                />
+                {troco != null && (
+                  <p className={troco >= 0 ? "form-success" : "form-error"}>
+                    {troco >= 0 ? `Troco: R$ ${troco.toFixed(2)}` : `Faltam R$ ${Math.abs(troco).toFixed(2)}`}
+                  </p>
+                )}
+              </>
+            )}
+
+            <label htmlFor="client">Cliente{isTab ? "" : " (opcional, pra nota fiscal)"}</label>
+            <div className="select-wrap">
+              <select id="client" value={clientId} onChange={(e) => setClientId(e.target.value)}>
+                <option value="">{isTab ? "Selecione..." : "Consumidor não identificado"}</option>
+                {clients.map((client) => (
+                  <option key={client.id} value={client.id}>
+                    {isTab
+                      ? `${client.name} (saldo R$ ${Number(client.currentBalance).toFixed(2)} / limite R$ ${Number(client.creditLimit).toFixed(2)})`
+                      : `${client.name}${client.cnpj ? ` — CNPJ ${client.cnpj}` : client.cpf ? ` — CPF ${client.cpf}` : ""}`}
+                  </option>
+                ))}
+              </select>
+              <IconChevronDown />
+            </div>
+
+            {error && <p className="form-error">{error}</p>}
+
+            <div className="checkout-modal-actions">
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setIsCheckoutOpen(false)}
+                disabled={submitting}
+              >
+                Cancelar
+              </button>
+              <button type="button" className="checkout-button" onClick={handleCheckout} disabled={submitting}>
+                {submitting ? "Finalizando..." : "Finalizar Venda"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

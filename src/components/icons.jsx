@@ -138,6 +138,15 @@ export function IconClose(props) {
   );
 }
 
+export function IconSearch(props) {
+  return (
+    <Svg {...props}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.2-3.2" />
+    </Svg>
+  );
+}
+
 export function IconBox(props) {
   return (
     <Svg size={13} {...props}>
