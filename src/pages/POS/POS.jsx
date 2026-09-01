@@ -3,6 +3,7 @@ import * as productService from "../../services/product.service";
 import * as orderService from "../../services/order.service";
 import * as clientService from "../../services/client.service";
 import { useCart } from "../../contexts/CartContext";
+import { useCustomerDisplay } from "../../hooks/useCustomerDisplay";
 import { IconPlus, IconMinus, IconClose, IconBox, IconReceipt, IconUtensils, IconChevronDown } from "../../components/icons";
 
 const PAYMENT_METHODS = [
@@ -21,7 +22,9 @@ export default function POS() {
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [cashReceived, setCashReceived] = useState("");
   const { items, addItem, decreaseItem, removeItem, clearCart, total } = useCart();
+  const display = useCustomerDisplay();
 
   useEffect(() => {
     productService.listProducts().then(setProducts);
@@ -29,6 +32,21 @@ export default function POS() {
   }, []);
 
   const isTab = paymentMethod === "TAB";
+  const isCash = paymentMethod === "CASH";
+  const receivedValue = cashReceived === "" ? null : Number(cashReceived);
+  const troco = receivedValue != null ? receivedValue - total : null;
+
+  // Mantém o display de cliente atualizado conforme o carrinho e o pagamento mudam.
+  useEffect(() => {
+    if (!display.isConnected) return;
+
+    if (isCash && troco != null) {
+      if (troco >= 0) display.sendAmount(troco, "troco");
+      else display.sendAmount(total, "pagar");
+    } else {
+      display.sendAmount(total, "total");
+    }
+  }, [display.isConnected, total, isCash, troco]);
 
   const productsByCategory = products.reduce((groups, product) => {
     groups[product.category] ??= [];
@@ -55,6 +73,8 @@ export default function POS() {
       });
       clearCart();
       setClientId("");
+      setCashReceived("");
+      display.clear();
       setFeedback("Venda registrada com sucesso!");
       productService.listProducts().then(setProducts);
     } catch (err) {
@@ -107,6 +127,24 @@ export default function POS() {
 
       <aside className="cart">
         <h2>Comanda</h2>
+
+        {display.isSupported ? (
+          <div className="display-panel">
+            <span className="display-panel-status">
+              <span className={`display-panel-dot${display.isConnected ? " connected" : ""}`} />
+              {display.isConnected ? "Display do cliente conectado" : "Display do cliente desconectado"}
+            </span>
+            <button type="button" onClick={display.isConnected ? display.disconnect : display.connect}>
+              {display.isConnected ? "Desconectar" : "Conectar Display"}
+            </button>
+          </div>
+        ) : (
+          <p className="display-panel-status">
+            Display de cliente indisponível: use Google Chrome ou Microsoft Edge.
+          </p>
+        )}
+        {display.error && <p className="form-error">{display.error.message}</p>}
+
         {items.length === 0 && (
           <div className="cart-empty-state">
             <IconReceipt />
@@ -152,7 +190,14 @@ export default function POS() {
 
         <label htmlFor="payment-method">Forma de pagamento</label>
         <div className="select-wrap">
-          <select id="payment-method" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+          <select
+            id="payment-method"
+            value={paymentMethod}
+            onChange={(e) => {
+              setPaymentMethod(e.target.value);
+              setCashReceived("");
+            }}
+          >
             {PAYMENT_METHODS.map((method) => (
               <option key={method.value} value={method.value}>
                 {method.label}
@@ -161,6 +206,26 @@ export default function POS() {
           </select>
           <IconChevronDown />
         </div>
+
+        {isCash && (
+          <>
+            <label htmlFor="cash-received">Valor recebido</label>
+            <input
+              id="cash-received"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              value={cashReceived}
+              onChange={(e) => setCashReceived(e.target.value)}
+            />
+            {troco != null && (
+              <p className={troco >= 0 ? "form-success" : "form-error"}>
+                {troco >= 0 ? `Troco: R$ ${troco.toFixed(2)}` : `Faltam R$ ${Math.abs(troco).toFixed(2)}`}
+              </p>
+            )}
+          </>
+        )}
 
         <label htmlFor="client">Cliente{isTab ? "" : " (opcional, pra nota fiscal)"}</label>
         <div className="select-wrap">
