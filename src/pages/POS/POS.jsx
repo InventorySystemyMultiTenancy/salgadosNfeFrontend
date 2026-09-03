@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import * as productService from "../../services/product.service";
 import * as orderService from "../../services/order.service";
 import * as clientService from "../../services/client.service";
+import * as fiscalService from "../../services/fiscal.service";
 import { useCart } from "../../contexts/CartContext";
 import { useCustomerDisplay } from "../../hooks/useCustomerDisplay";
+import { printReceipt } from "../../utils/receiptPrint";
 import {
   IconPlus,
   IconMinus,
@@ -39,6 +41,8 @@ export default function POS() {
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [lastOrder, setLastOrder] = useState(null);
+  const [companyInfo, setCompanyInfo] = useState({});
   const { items, addItem, decreaseItem, removeItem, clearCart, total } = useCart();
   const display = useCustomerDisplay();
   const searchInputRef = useRef(null);
@@ -46,6 +50,7 @@ export default function POS() {
   useEffect(() => {
     productService.listProducts().then(setProducts);
     clientService.listClients().then(setClients);
+    fiscalService.fetchPublicFiscalSettings().then(setCompanyInfo).catch(() => {});
   }, []);
 
   // Atalhos de busca rápida: Ctrl+K ou F2 focam o campo, de qualquer lugar da tela.
@@ -120,6 +125,7 @@ export default function POS() {
     if (items.length === 0) return;
     setError("");
     setFeedback("");
+    setLastOrder(null);
     setIsCheckoutOpen(true);
   }
 
@@ -134,7 +140,7 @@ export default function POS() {
     setError("");
 
     try {
-      await orderService.createOrder({
+      const order = await orderService.createOrder({
         paymentMethod,
         clientId: clientId ? Number(clientId) : undefined,
         items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
@@ -145,12 +151,18 @@ export default function POS() {
       display.clear();
       setIsCheckoutOpen(false);
       setFeedback("Venda registrada com sucesso!");
+      setLastOrder(order);
       productService.listProducts().then(setProducts);
     } catch (err) {
       setError(err.response?.data?.error || "Erro ao registrar a venda.");
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function handlePrintReceipt() {
+    if (!lastOrder) return;
+    printReceipt(lastOrder, companyInfo);
   }
 
   return (
@@ -275,7 +287,16 @@ export default function POS() {
           <strong>R$ {total.toFixed(2)}</strong>
         </div>
 
-        {feedback && <p className="form-success">{feedback}</p>}
+        {feedback && (
+          <div className="pos-checkout-feedback">
+            <p className="form-success">{feedback}</p>
+            {lastOrder && (
+              <button type="button" className="secondary" onClick={handlePrintReceipt}>
+                <IconReceipt size={16} /> Imprimir Cupom Fiscal
+              </button>
+            )}
+          </div>
+        )}
 
         <button
           type="button"

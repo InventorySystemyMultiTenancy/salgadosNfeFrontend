@@ -5,6 +5,11 @@ export async function fetchFiscalSettings() {
   return data;
 }
 
+export async function fetchPublicFiscalSettings() {
+  const { data } = await api.get("/fiscal/settings/public");
+  return data;
+}
+
 export async function updateFiscalSettings(settings) {
   const { data } = await api.put("/fiscal/settings", settings);
   return data;

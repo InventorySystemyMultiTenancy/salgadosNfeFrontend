@@ -4,6 +4,7 @@ import * as orderService from "../../services/order.service";
 import * as fiscalService from "../../services/fiscal.service";
 import * as clientService from "../../services/client.service";
 import { IconChevronDown } from "../../components/icons";
+import { printReceipt } from "../../utils/receiptPrint";
 
 const STATUS_LABEL = {
   NOT_EMITTED: "Não emitido",
@@ -20,6 +21,7 @@ export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [clients, setClients] = useState([]);
   const [errors, setErrors] = useState({});
+  const [companyInfo, setCompanyInfo] = useState({});
 
   async function load() {
     const data = await orderService.fetchOrders({ clientId: clientId || undefined });
@@ -28,6 +30,7 @@ export default function Orders() {
 
   useEffect(() => {
     clientService.listClients().then(setClients);
+    fiscalService.fetchFiscalSettings().then(setCompanyInfo).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -134,6 +137,9 @@ export default function Orders() {
                   </button>
                   <button type="button" onClick={() => handleEmit(order.id, fiscalService.emitFiscalNFe)}>
                     Emitir NF-e
+                  </button>
+                  <button type="button" onClick={() => printReceipt(order, companyInfo)}>
+                    Imprimir Cupom
                   </button>
                   {errors[order.id] && <div className="form-error">{errors[order.id]}</div>}
                 </td>

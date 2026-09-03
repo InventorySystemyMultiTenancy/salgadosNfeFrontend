@@ -394,6 +394,7 @@ h3 {
 
 .table-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
 }
 
@@ -849,6 +850,30 @@ h3 {
   transform: translateY(-50%);
   color: var(--color-muted);
   pointer-events: none;
+}
+
+.pos-checkout-feedback {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.pos-checkout-feedback button.secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: none;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  padding: 0.55rem 0.9rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--color-text);
+}
+
+.pos-checkout-feedback button.secondary:hover {
+  background: rgba(43, 36, 29, 0.05);
 }
 
 .checkout-button {
