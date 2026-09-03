@@ -6,6 +6,7 @@ import * as fiscalService from "../../services/fiscal.service";
 import { useCart } from "../../contexts/CartContext";
 import { useCustomerDisplay } from "../../hooks/useCustomerDisplay";
 import { printReceipt } from "../../utils/receiptPrint";
+import { printReceiptEscPos } from "../../utils/qzPrint";
 import {
   IconPlus,
   IconMinus,
@@ -160,9 +161,14 @@ export default function POS() {
     }
   }
 
-  function handlePrintReceipt() {
+  async function handlePrintReceipt() {
     if (!lastOrder) return;
-    printReceipt(lastOrder, companyInfo);
+    try {
+      await printReceiptEscPos(lastOrder, companyInfo);
+    } catch {
+      // QZ Tray não instalado/rodando na máquina — cai pro print via navegador como alternativa.
+      printReceipt(lastOrder, companyInfo);
+    }
   }
 
   return (

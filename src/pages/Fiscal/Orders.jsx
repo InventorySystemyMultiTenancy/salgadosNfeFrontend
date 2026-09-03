@@ -5,6 +5,7 @@ import * as fiscalService from "../../services/fiscal.service";
 import * as clientService from "../../services/client.service";
 import { IconChevronDown } from "../../components/icons";
 import { printReceipt } from "../../utils/receiptPrint";
+import { printReceiptEscPos } from "../../utils/qzPrint";
 
 const STATUS_LABEL = {
   NOT_EMITTED: "Não emitido",
@@ -52,6 +53,15 @@ export default function Orders() {
       await load();
     } catch (err) {
       setErrors((current) => ({ ...current, [orderId]: err.response?.data?.error || "Erro ao emitir." }));
+    }
+  }
+
+  async function handlePrintReceipt(order) {
+    try {
+      await printReceiptEscPos(order, companyInfo);
+    } catch {
+      // QZ Tray não instalado/rodando na máquina — cai pro print via navegador como alternativa.
+      printReceipt(order, companyInfo);
     }
   }
 
@@ -138,7 +148,7 @@ export default function Orders() {
                   <button type="button" onClick={() => handleEmit(order.id, fiscalService.emitFiscalNFe)}>
                     Emitir NF-e
                   </button>
-                  <button type="button" onClick={() => printReceipt(order, companyInfo)}>
+                  <button type="button" onClick={() => handlePrintReceipt(order)}>
                     Imprimir Cupom
                   </button>
                   {errors[order.id] && <div className="form-error">{errors[order.id]}</div>}
