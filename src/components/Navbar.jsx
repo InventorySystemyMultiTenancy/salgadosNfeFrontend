@@ -23,15 +23,8 @@ export default function Navbar() {
   return (
     <header className="navbar">
       <span className="navbar-brand">
-        <span className="navbar-brand-mark">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M6 10c0-3 2.5-6 6-6s6 3 6 6c0 4-3 5-3 8a3 3 0 0 1-6 0c0-3-3-4-3-8Z"
-              fill="currentColor"
-            />
-          </svg>
-        </span>
-        Salgaderia
+        <img src="/logo-icon.png" alt="" className="navbar-brand-mark" />
+        Sabor da Hora
       </span>
       <nav className="navbar-links">
         {(user.role === "ADMIN" || user.role === "SELLER") && (

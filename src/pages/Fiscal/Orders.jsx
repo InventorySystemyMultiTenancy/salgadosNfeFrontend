@@ -116,7 +116,7 @@ export default function Orders() {
                 <td>{PAYMENT_LABEL[order.paymentMethod]}</td>
                 <td>R$ {Number(order.totalAmount).toFixed(2)}</td>
                 <td>{order.fiscalType ? FISCAL_TYPE_LABEL[order.fiscalType] : "-"}</td>
-                <td>
+                <td style={{ maxWidth: 280, overflowWrap: "break-word" }}>
                   {STATUS_LABEL[order.fiscalStatus]}
                   {order.fiscalStatus === "REJECTED" && order.fiscalError && (
                     <div className="form-error">{order.fiscalError}</div>

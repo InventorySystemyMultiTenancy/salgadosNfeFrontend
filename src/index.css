@@ -41,6 +41,7 @@ button {
 
 input,
 select {
+  width: 100%;
   font-family: inherit;
   padding: 0.6rem 0.7rem;
   border: 1px solid var(--color-border);
@@ -48,7 +49,12 @@ select {
   border-radius: var(--radius-sm);
   font-size: 1rem;
   color: var(--color-text);
-  transition: border-color 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input:focus,
+select:focus {
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
 }
 
 input:hover,
@@ -94,15 +100,12 @@ h3 {
 }
 
 .navbar-brand-mark {
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   border-radius: 10px;
-  background: linear-gradient(155deg, var(--color-primary-bright), var(--color-primary-dark));
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 6px 14px -4px rgba(217, 72, 15, 0.4);
+  object-fit: cover;
+  object-position: center 60%;
+  box-shadow: 0 6px 14px -4px rgba(217, 72, 15, 0.35);
   flex-shrink: 0;
 }
 
@@ -213,14 +216,17 @@ h3 {
   flex-direction: column;
 }
 
-.login-card h1 {
-  font-size: 1.4rem;
-  margin-bottom: 0;
+.login-logo {
+  width: 65%;
+  max-width: 190px;
+  margin: 0 auto 0.5rem;
+  display: block;
 }
 
 .login-card p {
   color: var(--color-muted);
   margin-top: 0.25rem;
+  text-align: center;
 }
 
 .login-card button {
@@ -240,7 +246,7 @@ h3 {
 /* Generic page */
 .page {
   padding: 1.5rem 2rem;
-  max-width: 900px;
+  max-width: 1180px;
   margin: 0 auto;
 }
 
@@ -406,6 +412,7 @@ h3 {
   border-radius: var(--radius-sm);
   padding: 0.3rem 0.65rem;
   font-size: 0.85rem;
+  white-space: nowrap;
   text-decoration: none;
 }
 

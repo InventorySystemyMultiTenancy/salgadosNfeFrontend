@@ -27,7 +27,7 @@ export default function Login() {
   return (
     <div className="login-page">
       <form className="login-card" onSubmit={handleSubmit}>
-        <h1>Salgaderia System</h1>
+        <img src="/logo-full.png" alt="Sabor da Hora" className="login-logo" />
         <p>Acesse com seu usuário</p>
 
         <label htmlFor="email">Email</label>
