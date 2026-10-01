@@ -10,6 +10,7 @@ import {
   IconUsuarios,
   IconFiscal,
   IconConfig,
+  IconCard,
   IconLogout,
 } from "./icons";
 
@@ -59,6 +60,9 @@ export default function Navbar() {
             </NavLink>
             <NavLink to="/fiscal/config">
               <IconConfig /> Config. Fiscal
+            </NavLink>
+            <NavLink to="/pagamentos/config">
+              <IconCard /> Config. Pagamento
             </NavLink>
           </>
         )}

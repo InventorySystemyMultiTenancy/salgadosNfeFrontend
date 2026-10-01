@@ -15,6 +15,7 @@ import Audit from "./pages/Stock/Audit";
 import Users from "./pages/Users/Users";
 import FiscalSettings from "./pages/Fiscal/Settings";
 import FiscalOrders from "./pages/Fiscal/Orders";
+import PaymentSettings from "./pages/Payments/Settings";
 
 function HomeRoute() {
   const { user } = useAuth();
@@ -110,6 +111,14 @@ function AppRoutes() {
           element={
             <PrivateRoute roles={["ADMIN"]}>
               <FiscalOrders />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/pagamentos/config"
+          element={
+            <PrivateRoute roles={["ADMIN"]}>
+              <PaymentSettings />
             </PrivateRoute>
           }
         />

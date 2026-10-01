@@ -97,6 +97,15 @@ export function IconConfig(props) {
   );
 }
 
+export function IconCard(props) {
+  return (
+    <Svg {...props}>
+      <rect x="3" y="5.5" width="18" height="13" rx="2" />
+      <path d="M3 10h18M7 15h3" />
+    </Svg>
+  );
+}
+
 export function IconLogout(props) {
   return (
     <Svg size={14} strokeWidth="2" {...props}>

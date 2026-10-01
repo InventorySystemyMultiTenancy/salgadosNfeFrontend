@@ -3,6 +3,7 @@ import * as productService from "../../services/product.service";
 import * as orderService from "../../services/order.service";
 import * as clientService from "../../services/client.service";
 import * as fiscalService from "../../services/fiscal.service";
+import * as paymentService from "../../services/payment.service";
 import { useCart } from "../../contexts/CartContext";
 import { useCustomerDisplay } from "../../hooks/useCustomerDisplay";
 import { printReceipt } from "../../utils/receiptPrint";
@@ -26,6 +27,8 @@ const PAYMENT_METHODS = [
   { value: "TAB", label: "Fiado (Caderneta)" },
 ];
 
+const CHARGE_POLL_MS = 2500;
+
 function matchesSearch(product, term) {
   if (!term) return true;
   return product.name.toLowerCase().includes(term) || String(product.id) === term;
@@ -44,6 +47,13 @@ export default function POS() {
   const [submitting, setSubmitting] = useState(false);
   const [lastOrder, setLastOrder] = useState(null);
   const [companyInfo, setCompanyInfo] = useState({});
+  // Formas que a maquininha integrada aceita (Config. Pagamento) — vazio = sem maquininha.
+  const [terminalMethods, setTerminalMethods] = useState([]);
+  const [useTerminal, setUseTerminal] = useState(true);
+  // Cobrança atual na maquininha. Fica guardada depois de aprovada até a venda ser registrada,
+  // pra poder tentar registrar de novo sem cobrar o cliente duas vezes.
+  const [charge, setCharge] = useState(null);
+  const registeringRef = useRef(false);
   const { items, addItem, decreaseItem, removeItem, clearCart, total } = useCart();
   const display = useCustomerDisplay();
   const searchInputRef = useRef(null);
@@ -52,6 +62,10 @@ export default function POS() {
     productService.listProducts().then(setProducts);
     clientService.listClients().then(setClients);
     fiscalService.fetchPublicFiscalSettings().then(setCompanyInfo).catch(() => {});
+    paymentService
+      .fetchPublicPaymentSettings()
+      .then((settings) => setTerminalMethods(settings.methods ?? []))
+      .catch(() => {});
   }, []);
 
   // Atalhos de busca rápida: Ctrl+K ou F2 focam o campo, de qualquer lugar da tela.
@@ -68,17 +82,21 @@ export default function POS() {
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
   }, [isCheckoutOpen]);
 
+  const chargePending = charge?.status === "PENDING";
+
   useEffect(() => {
-    if (!isCheckoutOpen) return;
+    if (!isCheckoutOpen || chargePending) return;
     function handleEscape(e) {
       if (e.key === "Escape") setIsCheckoutOpen(false);
     }
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, [isCheckoutOpen]);
+  }, [isCheckoutOpen, chargePending]);
 
   const isTab = paymentMethod === "TAB";
   const isCash = paymentMethod === "CASH";
+  const terminalAvailable = terminalMethods.includes(paymentMethod);
+  const willUseTerminal = terminalAvailable && useTerminal;
   const receivedValue = cashReceived === "" ? null : Number(cashReceived);
   const troco = receivedValue != null ? receivedValue - total : null;
 
@@ -137,6 +155,57 @@ export default function POS() {
       return;
     }
 
+    if (charge?.status === "APPROVED") {
+      await registerOrder(charge.id);
+    } else if (willUseTerminal) {
+      await startCharge();
+    } else {
+      await registerOrder();
+    }
+  }
+
+  async function startCharge() {
+    setSubmitting(true);
+    setError("");
+    try {
+      setCharge(await paymentService.createCharge(total, paymentMethod));
+    } catch (err) {
+      setError(err.response?.data?.error || "Erro ao enviar a cobrança para a maquininha.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function handleChargeUpdate(updated) {
+    setCharge(updated);
+    if (updated.status === "APPROVED") {
+      registerOrder(updated.id);
+    } else if (updated.status !== "PENDING") {
+      setCharge(null);
+      setError(
+        updated.status === "CANCELED"
+          ? "Cobrança cancelada. Nada foi cobrado do cliente."
+          : "Pagamento recusado na maquininha. Tente de novo ou use outra forma de pagamento.",
+      );
+    }
+  }
+
+  async function handleCancelCharge() {
+    setSubmitting(true);
+    setError("");
+    try {
+      handleChargeUpdate(await paymentService.cancelCharge(charge.id));
+    } catch (err) {
+      setError(err.response?.data?.error || "Erro ao cancelar a cobrança.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function registerOrder(terminalPaymentId) {
+    // Polling e "Cancelar cobrança" podem voltar APPROVED quase juntos — registra uma vez só.
+    if (registeringRef.current) return;
+    registeringRef.current = true;
     setSubmitting(true);
     setError("");
 
@@ -145,21 +214,42 @@ export default function POS() {
         paymentMethod,
         clientId: clientId ? Number(clientId) : undefined,
         items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
+        terminalPaymentId,
       });
       clearCart();
       setClientId("");
       setCashReceived("");
+      setCharge(null);
       display.clear();
       setIsCheckoutOpen(false);
       setFeedback("Venda registrada com sucesso!");
       setLastOrder(order);
       productService.listProducts().then(setProducts);
     } catch (err) {
-      setError(err.response?.data?.error || "Erro ao registrar a venda.");
+      const message = err.response?.data?.error || "Erro ao registrar a venda.";
+      setError(
+        terminalPaymentId
+          ? `Pagamento aprovado na maquininha, mas a venda não foi registrada: ${message}`
+          : message,
+      );
     } finally {
+      registeringRef.current = false;
       setSubmitting(false);
     }
   }
+
+  // Acompanha a cobrança na maquininha até o cliente pagar ou cancelar no aparelho.
+  useEffect(() => {
+    if (!chargePending) return;
+    const timer = setTimeout(async () => {
+      try {
+        handleChargeUpdate(await paymentService.fetchCharge(charge.id));
+      } catch {
+        setCharge({ ...charge }); // falha de rede: tenta de novo no próximo ciclo
+      }
+    }, CHARGE_POLL_MS);
+    return () => clearTimeout(timer);
+  }, [charge, chargePending]);
 
   async function handlePrintReceipt() {
     if (!lastOrder) return;
@@ -315,7 +405,10 @@ export default function POS() {
       </aside>
 
       {isCheckoutOpen && (
-        <div className="checkout-modal-overlay" onClick={() => !submitting && setIsCheckoutOpen(false)}>
+        <div
+          className="checkout-modal-overlay"
+          onClick={() => !submitting && !chargePending && setIsCheckoutOpen(false)}
+        >
           <div className="checkout-modal" onClick={(e) => e.stopPropagation()}>
             <h2>Fechar Pedido</h2>
 
@@ -329,6 +422,7 @@ export default function POS() {
               <select
                 id="payment-method"
                 value={paymentMethod}
+                disabled={Boolean(charge)}
                 onChange={(e) => {
                   setPaymentMethod(e.target.value);
                   setCashReceived("");
@@ -364,6 +458,17 @@ export default function POS() {
               </>
             )}
 
+            {terminalAvailable && !charge && (
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={useTerminal}
+                  onChange={(e) => setUseTerminal(e.target.checked)}
+                />
+                Cobrar na maquininha integrada
+              </label>
+            )}
+
             <label htmlFor="client">Cliente{isTab ? "" : " (opcional, pra nota fiscal)"}</label>
             <div className="select-wrap">
               <select id="client" value={clientId} onChange={(e) => setClientId(e.target.value)}>
@@ -379,19 +484,53 @@ export default function POS() {
               <IconChevronDown />
             </div>
 
+            {chargePending && (
+              <div className="terminal-waiting">
+                <span className="terminal-spinner" />
+                <div>
+                  <strong>Aguardando pagamento na maquininha</strong>
+                  <small>Peça para o cliente passar o cartão ou pagar com Pix no aparelho.</small>
+                </div>
+              </div>
+            )}
+            {charge?.status === "APPROVED" && (
+              <p className="form-success">Pagamento aprovado na maquininha.</p>
+            )}
+
             {error && <p className="form-error">{error}</p>}
 
             <div className="checkout-modal-actions">
+              {chargePending ? (
+                <button type="button" className="secondary" onClick={handleCancelCharge} disabled={submitting}>
+                  {submitting ? "Cancelando..." : "Cancelar cobrança"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => setIsCheckoutOpen(false)}
+                  disabled={submitting}
+                >
+                  Cancelar
+                </button>
+              )}
               <button
                 type="button"
-                className="secondary"
-                onClick={() => setIsCheckoutOpen(false)}
-                disabled={submitting}
+                className="checkout-button"
+                onClick={handleCheckout}
+                disabled={submitting || chargePending}
               >
-                Cancelar
-              </button>
-              <button type="button" className="checkout-button" onClick={handleCheckout} disabled={submitting}>
-                {submitting ? "Finalizando..." : "Finalizar Venda"}
+                {chargePending
+                  ? "Aguardando maquininha..."
+                  : submitting
+                    ? willUseTerminal && !charge
+                      ? "Enviando..."
+                      : "Finalizando..."
+                    : charge?.status === "APPROVED"
+                      ? "Registrar Venda"
+                      : willUseTerminal
+                        ? "Cobrar na Maquininha"
+                        : "Finalizar Venda"}
               </button>
             </div>
           </div>
