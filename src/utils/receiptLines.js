@@ -6,65 +6,88 @@ const PAYMENT_LABEL = {
   TAB: "Fiado (Caderneta)",
 };
 
-// Largura em caracteres das linhas do cupom — 40 colunas é o padrão de fonte normal numa
-// impressora térmica de 80mm. Usado tanto no fallback via window.print() (receiptPrint.js) quanto
-// no envio ESC/POS cru via QZ Tray (qzPrint.js), pra manter os dois formatados igual.
+// Largura em caracteres das linhas do cupom na fonte normal — 40 colunas cabe com folga numa
+// térmica de 80mm mesmo com a margem esquerda (ver qzPrint.js). Na fonte grande (largura dupla)
+// cabe a metade. Usado pelos dois caminhos de impressão (QZ Tray e navegador) pra saírem iguais.
 export const RECEIPT_LINE_WIDTH = 40;
+export const RECEIPT_LARGE_WIDTH = RECEIPT_LINE_WIDTH / 2;
+
+// Logo em 1 bit (preto/branco com pontilhado) gerada por scripts/make_print_logo.py a partir da
+// logo colorida — a térmica não imprime cinza, e o fundo de foto da logo original viraria borrão.
+export const RECEIPT_LOGO_URL = "/logo-print.png";
 
 export function money(value) {
-  return `R$ ${Number(value).toFixed(2)}`;
+  return `R$ ${Number(value).toFixed(2).replace(".", ",")}`;
 }
 
-function padLine(left, right) {
+export function padLine(left, right, width = RECEIPT_LINE_WIDTH) {
   left = String(left);
   right = String(right);
-  const gap = Math.max(1, RECEIPT_LINE_WIDTH - left.length - right.length);
+  const gap = Math.max(1, width - left.length - right.length);
   return left + " ".repeat(gap) + right;
-}
-
-function centerLine(text) {
-  text = String(text);
-  if (text.length >= RECEIPT_LINE_WIDTH) return text;
-  return " ".repeat(Math.floor((RECEIPT_LINE_WIDTH - text.length) / 2)) + text;
 }
 
 function formatDateTime(value) {
   const date = value ? new Date(value) : new Date();
-  return date.toLocaleString("pt-BR");
+  return date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 }
 
-// Monta as linhas de texto do cupom não fiscal (comprovante interno, não é o DANFE/CFe autorizado
-// pela SEFAZ) — puramente texto, sem HTML, pra poder ser reaproveitado tanto num <pre> quanto
-// mandado cru (ESC/POS) pra impressora térmica.
-export function buildReceiptLines(order, { companyName, cnpj } = {}) {
-  const separator = "-".repeat(RECEIPT_LINE_WIDTH);
-  const lines = [];
+// Monta o cupom não fiscal (comprovante interno, não é o DANFE/CFe autorizado pela SEFAZ) como uma
+// lista de linhas com estilo — cada impressora (ESC/POS ou HTML) traduz pro seu formato:
+//   { type: "logo" }
+//   { type: "text", text, align?: "left"|"center", bold?, size?: "normal"|"large" }
+//   { type: "pair", left, right, bold?, size? }   ← texto à esquerda e valor encostado à direita
+//   { type: "rule", char? }                       ← linha separadora
+//   { type: "space" }                             ← linha em branco (respiro)
+export function buildReceipt(order, { companyName, cnpj } = {}) {
+  const rows = [];
+  const items = order.items ?? [];
+  const itemsCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
-  lines.push(centerLine(companyName || "Salgaderia"));
-  if (cnpj) lines.push(centerLine(`CNPJ ${cnpj}`));
-  lines.push(separator);
-  lines.push(`Pedido #${order.id}`);
-  lines.push(formatDateTime(order.createdAt));
-  if (order.seller?.name) lines.push(`Vendedor: ${order.seller.name}`);
-  lines.push(order.client?.name ? `Cliente: ${order.client.name}` : "Cliente: Consumidor não identificado");
-  lines.push(separator);
+  rows.push({ type: "logo" });
+  rows.push({ type: "space" });
+  if (companyName) rows.push({ type: "text", text: companyName, align: "center", bold: true });
+  if (cnpj) rows.push({ type: "text", text: `CNPJ ${cnpj}`, align: "center" });
+  rows.push({ type: "space" });
 
-  for (const item of order.items ?? []) {
+  rows.push({ type: "rule", char: "=" });
+  rows.push({ type: "text", text: `PEDIDO #${order.id}`, align: "center", bold: true, size: "large" });
+  rows.push({ type: "text", text: formatDateTime(order.createdAt), align: "center" });
+  rows.push({ type: "rule", char: "=" });
+  rows.push({ type: "space" });
+
+  if (order.seller?.name) rows.push({ type: "pair", left: "Atendente", right: order.seller.name });
+  rows.push({ type: "pair", left: "Cliente", right: order.client?.name ?? "Consumidor" });
+  rows.push({ type: "space" });
+
+  rows.push({ type: "pair", left: "ITEM", right: "TOTAL", bold: true });
+  rows.push({ type: "rule" });
+  for (const item of items) {
     const name = item.product?.name ?? item.name ?? "Item";
-    const quantity = item.quantity;
     const unitPrice = Number(item.unitPrice);
-    const lineTotal = unitPrice * quantity;
-    lines.push(name);
-    lines.push(padLine(`${quantity} x ${money(unitPrice)}`, money(lineTotal)));
+    rows.push({ type: "text", text: name, bold: true });
+    rows.push({
+      type: "pair",
+      left: `  ${item.quantity} x ${money(unitPrice)}`,
+      right: money(unitPrice * item.quantity),
+    });
   }
+  rows.push({ type: "rule" });
+  rows.push({ type: "pair", left: `${itemsCount} ${itemsCount === 1 ? "item" : "itens"}`, right: "" });
+  rows.push({ type: "space" });
 
-  lines.push(separator);
-  lines.push(padLine("TOTAL", money(order.totalAmount)));
-  lines.push(`Pagamento: ${PAYMENT_LABEL[order.paymentMethod] || order.paymentMethod}`);
-  lines.push(separator);
-  lines.push(centerLine("Comprovante não fiscal"));
-  lines.push(centerLine("não substitui nota fiscal."));
-  lines.push(centerLine("Obrigado pela preferência!"));
+  rows.push({ type: "pair", left: "TOTAL", right: money(order.totalAmount), bold: true, size: "large" });
+  rows.push({ type: "space" });
+  rows.push({ type: "pair", left: "Pagamento", right: PAYMENT_LABEL[order.paymentMethod] || order.paymentMethod });
+  rows.push({ type: "space" });
 
-  return lines;
+  rows.push({ type: "rule", char: "=" });
+  rows.push({ type: "space" });
+  rows.push({ type: "text", text: "Obrigado pela preferência!", align: "center", bold: true });
+  rows.push({ type: "text", text: "Volte sempre :)", align: "center" });
+  rows.push({ type: "space" });
+  rows.push({ type: "text", text: "Comprovante não fiscal -", align: "center" });
+  rows.push({ type: "text", text: "não substitui a nota fiscal.", align: "center" });
+
+  return rows;
 }
