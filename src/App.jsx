@@ -11,11 +11,14 @@ import Clients from "./pages/Billing/Clients";
 import DuePanel from "./pages/Billing/DuePanel";
 import Statement from "./pages/Billing/Statement";
 import Kitchen from "./pages/Kitchen/Kitchen";
-import Audit from "./pages/Stock/Audit";
+import Stock from "./pages/Stock/Stock";
 import Users from "./pages/Users/Users";
 import FiscalSettings from "./pages/Fiscal/Settings";
 import FiscalOrders from "./pages/Fiscal/Orders";
 import PaymentSettings from "./pages/Payments/Settings";
+import Cash from "./pages/Cash/Cash";
+import Reports from "./pages/Reports/Reports";
+import Preorders from "./pages/Preorders/Preorders";
 
 function HomeRoute() {
   const { user } = useAuth();
@@ -85,8 +88,8 @@ function AppRoutes() {
         <Route
           path="/estoque"
           element={
-            <PrivateRoute roles={["ADMIN"]}>
-              <Audit />
+            <PrivateRoute roles={["ADMIN", "SELLER", "KITCHEN"]}>
+              <Stock />
             </PrivateRoute>
           }
         />
@@ -119,6 +122,30 @@ function AppRoutes() {
           element={
             <PrivateRoute roles={["ADMIN"]}>
               <PaymentSettings />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/caixa"
+          element={
+            <PrivateRoute roles={["ADMIN", "SELLER"]}>
+              <Cash />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/encomendas"
+          element={
+            <PrivateRoute roles={["ADMIN", "SELLER"]}>
+              <Preorders />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/relatorios"
+          element={
+            <PrivateRoute roles={["ADMIN"]}>
+              <Reports />
             </PrivateRoute>
           }
         />

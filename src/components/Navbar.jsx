@@ -12,6 +12,9 @@ import {
   IconConfig,
   IconCard,
   IconLogout,
+  IconCaixa,
+  IconChart,
+  IconCalendar,
 } from "./icons";
 
 export default function Navbar() {
@@ -33,13 +36,29 @@ export default function Navbar() {
             <IconPDV /> PDV
           </NavLink>
         )}
+        {(user.role === "ADMIN" || user.role === "SELLER") && (
+          <>
+            <NavLink to="/caixa">
+              <IconCaixa /> Caixa
+            </NavLink>
+            <NavLink to="/encomendas">
+              <IconCalendar /> Encomendas
+            </NavLink>
+          </>
+        )}
         {(user.role === "ADMIN" || user.role === "KITCHEN") && (
           <NavLink to="/cozinha">
             <IconCozinha /> Cozinha
           </NavLink>
         )}
+        <NavLink to="/estoque">
+          <IconEstoque /> Estoque
+        </NavLink>
         {user.role === "ADMIN" && (
           <>
+            <NavLink to="/relatorios">
+              <IconChart /> Relatórios
+            </NavLink>
             <NavLink to="/produtos">
               <IconProdutos /> Produtos
             </NavLink>
@@ -49,14 +68,11 @@ export default function Navbar() {
             <NavLink to="/cobranca">
               <IconCobranca /> Cobrança
             </NavLink>
-            <NavLink to="/estoque">
-              <IconEstoque /> Estoque
-            </NavLink>
             <NavLink to="/usuarios">
               <IconUsuarios /> Usuários
             </NavLink>
             <NavLink to="/fiscal/pedidos">
-              <IconFiscal /> Fiscal
+              <IconFiscal /> Pedidos
             </NavLink>
             <NavLink to="/fiscal/config">
               <IconConfig /> Config. Fiscal

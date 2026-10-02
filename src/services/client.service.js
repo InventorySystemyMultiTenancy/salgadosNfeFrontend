@@ -29,7 +29,7 @@ export async function fetchStatement(id) {
   return data;
 }
 
-export async function settleDebt(id, amount) {
-  const { data } = await api.post(`/clients/${id}/payments`, { amount });
+export async function settleDebt(id, amount, paymentMethod) {
+  const { data } = await api.post(`/clients/${id}/payments`, { amount, paymentMethod });
   return data;
 }

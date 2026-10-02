@@ -1,37 +1,16 @@
 import { useEffect, useState } from "react";
 import * as orderService from "../../services/order.service";
-import * as productService from "../../services/product.service";
 
+// Quanto cada operador baixou de cada produto em vendas (aba "Por operador" da tela de Estoque).
 export default function Audit() {
   const [audit, setAudit] = useState([]);
-  const [products, setProducts] = useState([]);
 
   useEffect(() => {
     orderService.fetchStockAudit().then(setAudit);
-    productService.listProducts().then(setProducts);
   }, []);
 
-  const lowStock = products.filter(
-    (product) => product.minStockAlert != null && product.stockQuantity <= product.minStockAlert,
-  );
-
   return (
-    <div className="page">
-      <h1>Auditoria de Estoque por Operador</h1>
-
-      {lowStock.length > 0 && (
-        <section className="low-stock-alert">
-          <h2>Estoque crítico</h2>
-          <ul>
-            {lowStock.map((product) => (
-              <li key={product.id}>
-                {product.name}: {product.stockQuantity} unidades (mínimo {product.minStockAlert})
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
+    <>
       <div className="table-scroll">
         <table className="product-table">
           <thead>
@@ -53,6 +32,6 @@ export default function Audit() {
         </table>
       </div>
       {audit.length === 0 && <p className="cart-empty">Nenhuma venda registrada ainda.</p>}
-    </div>
+    </>
   );
 }

@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import * as clientService from "../../services/client.service";
+import { IconChevronDown } from "../../components/icons";
 
 export default function Statement() {
   const { id } = useParams();
   const [data, setData] = useState(null);
   const [amount, setAmount] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState("");
 
@@ -23,7 +25,7 @@ export default function Statement() {
     setError("");
     setFeedback("");
     try {
-      await clientService.settleDebt(id, Number(amount));
+      await clientService.settleDebt(id, Number(amount), paymentMethod);
       setAmount("");
       setFeedback("Pagamento registrado com sucesso!");
       await load();
@@ -93,6 +95,16 @@ export default function Statement() {
           onChange={(e) => setAmount(e.target.value)}
           required
         />
+        <label htmlFor="settle-method">Forma de pagamento</label>
+        <div className="select-wrap">
+          <select id="settle-method" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+            <option value="CASH">Dinheiro</option>
+            <option value="PIX">Pix</option>
+            <option value="DEBIT">Cartão de Débito</option>
+            <option value="CREDIT">Cartão de Crédito</option>
+          </select>
+          <IconChevronDown />
+        </div>
         {error && <p className="form-error">{error}</p>}
         {feedback && <p className="form-success">{feedback}</p>}
         <div className="form-actions">

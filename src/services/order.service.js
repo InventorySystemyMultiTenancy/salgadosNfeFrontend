@@ -20,6 +20,11 @@ export async function fetchStockAudit() {
   return data;
 }
 
+export async function cancelOrder(id, reason) {
+  const { data } = await api.post(`/orders/${id}/cancel`, { reason });
+  return data;
+}
+
 export async function fetchOrders({ clientId } = {}) {
   const { data } = await api.get("/orders", { params: clientId ? { clientId } : undefined });
   return data;

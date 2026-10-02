@@ -216,3 +216,29 @@ export function IconEyeOff(props) {
     </Svg>
   );
 }
+
+export function IconCaixa(props) {
+  return (
+    <Svg {...props}>
+      <rect x="3" y="10" width="18" height="10" rx="2" />
+      <path d="M7 10V5h10v5M3 15h18M10 7.5h4" />
+    </Svg>
+  );
+}
+
+export function IconChart(props) {
+  return (
+    <Svg {...props}>
+      <path d="M4 20V4M4 20h16M8 16v-4M12 16V8M16 16v-6" />
+    </Svg>
+  );
+}
+
+export function IconCalendar(props) {
+  return (
+    <Svg {...props}>
+      <rect x="3.5" y="5" width="17" height="15" rx="2" />
+      <path d="M3.5 10h17M8 3v4M16 3v4M8 14h3" />
+    </Svg>
+  );
+}

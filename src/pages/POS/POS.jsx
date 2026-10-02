@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import * as productService from "../../services/product.service";
 import * as orderService from "../../services/order.service";
 import * as clientService from "../../services/client.service";
 import * as fiscalService from "../../services/fiscal.service";
 import * as paymentService from "../../services/payment.service";
+import * as cashService from "../../services/cash.service";
 import { useCart } from "../../contexts/CartContext";
 import { useCustomerDisplay } from "../../hooks/useCustomerDisplay";
 import { printReceipt } from "../../utils/receiptPrint";
@@ -53,6 +55,8 @@ export default function POS() {
   // Cobrança atual na maquininha. Fica guardada depois de aprovada até a venda ser registrada,
   // pra poder tentar registrar de novo sem cobrar o cliente duas vezes.
   const [charge, setCharge] = useState(null);
+  // null = ainda não sabe; false = caixa fechado (mostra aviso, mas não bloqueia a venda).
+  const [cashOpen, setCashOpen] = useState(null);
   const registeringRef = useRef(false);
   const { items, addItem, decreaseItem, removeItem, clearCart, total } = useCart();
   const display = useCustomerDisplay();
@@ -65,6 +69,10 @@ export default function POS() {
     paymentService
       .fetchPublicPaymentSettings()
       .then((settings) => setTerminalMethods(settings.methods ?? []))
+      .catch(() => {});
+    cashService
+      .fetchCurrentCash()
+      .then((session) => setCashOpen(Boolean(session)))
       .catch(() => {});
   }, []);
 
@@ -264,6 +272,14 @@ export default function POS() {
   return (
     <div className="pos-page">
       <div className="pos-products">
+        {cashOpen === false && (
+          <div className="pos-cash-warning">
+            <span>
+              <strong>Caixa fechado.</strong> Abra o caixa com o troco inicial para o fechamento do dia bater.
+            </span>
+            <Link to="/caixa">Abrir caixa</Link>
+          </div>
+        )}
         <div className="pos-search">
           <IconSearch />
           <input
