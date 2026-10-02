@@ -20,8 +20,8 @@ export async function closeCash({ countedCash, notes }) {
   return data;
 }
 
-export async function fetchCashSessions() {
-  const { data } = await api.get("/cash/sessions");
+export async function fetchCashSessions(params = {}) {
+  const { data } = await api.get("/cash/sessions", { params });
   return data;
 }
 

@@ -15,8 +15,8 @@ export async function updateKitchenStatus(id, status) {
   return data;
 }
 
-export async function fetchStockAudit() {
-  const { data } = await api.get("/orders/audit/stock");
+export async function fetchStockAudit(params = {}) {
+  const { data } = await api.get("/orders/audit/stock", { params });
   return data;
 }
 
@@ -25,7 +25,8 @@ export async function cancelOrder(id, reason) {
   return data;
 }
 
-export async function fetchOrders({ clientId } = {}) {
-  const { data } = await api.get("/orders", { params: clientId ? { clientId } : undefined });
+// Filtros e paginação no servidor. Devolve { orders, total, totalAmount, page, pageSize }.
+export async function fetchOrders(params = {}) {
+  const { data } = await api.get("/orders", { params });
   return data;
 }

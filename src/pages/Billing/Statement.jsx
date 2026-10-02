@@ -2,12 +2,17 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import * as clientService from "../../services/client.service";
 import { IconChevronDown } from "../../components/icons";
+import { FilterBar, PeriodFilter, SelectFilter } from "../../components/Filters";
+import { inPeriod } from "../../utils/filters";
 
 export default function Statement() {
   const { id } = useParams();
   const [data, setData] = useState(null);
   const [amount, setAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("CASH");
+  const [entryType, setEntryType] = useState("");
+  const [period, setPeriod] = useState("all");
+  const [custom, setCustom] = useState({ from: "", to: "" });
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState("");
 
@@ -43,6 +48,9 @@ export default function Statement() {
 
   const { client, entries, message } = data;
   const whatsappLink = `https://wa.me/${client.phone}?text=${encodeURIComponent(message)}`;
+  const visibleEntries = entries.filter(
+    (entry) => (!entryType || entry.type === entryType) && inPeriod(entry.date, period, custom),
+  );
 
   return (
     <div className="page">
@@ -51,6 +59,27 @@ export default function Statement() {
         Saldo devedor atual: <strong>R$ {Number(client.currentBalance).toFixed(2)}</strong> · Limite: R${" "}
         {Number(client.creditLimit).toFixed(2)}
       </p>
+
+      <FilterBar
+        summary={`${visibleEntries.length} de ${entries.length} lançamento(s)`}
+        canClear={Boolean(entryType) || period !== "all"}
+        onClear={() => {
+          setEntryType("");
+          setPeriod("all");
+          setCustom({ from: "", to: "" });
+        }}
+      >
+        <PeriodFilter value={period} onChange={setPeriod} custom={custom} onCustomChange={setCustom} />
+        <SelectFilter
+          label="Tipo"
+          value={entryType}
+          onChange={setEntryType}
+          options={[
+            { value: "charge", label: "Consumo" },
+            { value: "payment", label: "Pagamento" },
+          ]}
+        />
+      </FilterBar>
 
       <div className="table-scroll">
         <table className="product-table">
@@ -63,12 +92,14 @@ export default function Statement() {
             </tr>
           </thead>
           <tbody>
-            {entries.map((entry, index) => (
+            {visibleEntries.map((entry, index) => (
               <tr key={index}>
                 <td>{new Date(entry.date).toLocaleDateString("pt-BR")}</td>
                 <td>{entry.type === "charge" ? "Consumo" : "Pagamento"}</td>
                 <td>{entry.description}</td>
-                <td>{entry.type === "charge" ? "+" : "-"}R$ {entry.amount.toFixed(2)}</td>
+                <td>
+                  {entry.type === "charge" ? "+" : "-"}R$ {entry.amount.toFixed(2)}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -109,11 +140,7 @@ export default function Statement() {
         {feedback && <p className="form-success">{feedback}</p>}
         <div className="form-actions">
           <button type="submit">Liquidar</button>
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => setAmount(String(client.currentBalance))}
-          >
+          <button type="button" className="secondary" onClick={() => setAmount(String(client.currentBalance))}>
             Preencher com saldo total
           </button>
         </div>

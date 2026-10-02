@@ -23,8 +23,8 @@ export async function applyStockCount({ notes, items }) {
   return data;
 }
 
-export async function fetchStockCounts() {
-  const { data } = await api.get("/stock/counts");
+export async function fetchStockCounts(params = {}) {
+  const { data } = await api.get("/stock/counts", { params });
   return data;
 }
 

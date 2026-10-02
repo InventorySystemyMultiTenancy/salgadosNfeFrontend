@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import * as stockService from "../../services/stock.service";
 import { IconSearch } from "../../components/icons";
 import { formatDateTime } from "../../utils/format";
+import * as userService from "../../services/user.service";
+import { FilterBar, PeriodFilter, SelectFilter } from "../../components/Filters";
+import { periodParams } from "../../utils/filters";
+
+const EMPTY_HISTORY_FILTERS = { period: "30d", custom: { from: "", to: "" }, userId: "", onlyDiff: "" };
 
 function DiffBadge({ value }) {
   if (value === 0) return <span className="stock-diff stock-diff-ok">OK</span>;
@@ -52,14 +57,32 @@ export default function StockCount({ products, onSaved, canSeeHistory }) {
   const [result, setResult] = useState(null);
   const [history, setHistory] = useState([]);
   const [selected, setSelected] = useState(null);
+  const [historyFilters, setHistoryFilters] = useState(EMPTY_HISTORY_FILTERS);
+  const [users, setUsers] = useState([]);
 
   function loadHistory() {
-    if (canSeeHistory) stockService.fetchStockCounts().then(setHistory);
+    if (!canSeeHistory) return;
+    stockService
+      .fetchStockCounts({
+        userId: historyFilters.userId || undefined,
+        ...periodParams(historyFilters.period, historyFilters.custom),
+      })
+      .then(setHistory);
   }
 
   useEffect(() => {
-    loadHistory();
+    if (canSeeHistory)
+      userService
+        .listUsers()
+        .then(setUsers)
+        .catch(() => {});
   }, [canSeeHistory]);
+
+  useEffect(() => {
+    loadHistory();
+  }, [canSeeHistory, historyFilters.period, historyFilters.custom, historyFilters.userId]);
+
+  const visibleHistory = history.filter((count) => !historyFilters.onlyDiff || count.productsWithDifference > 0);
 
   const term = search.trim().toLowerCase();
   const visible = products.filter((p) => !term || p.name.toLowerCase().includes(term) || String(p.id) === term);
@@ -194,9 +217,35 @@ export default function StockCount({ products, onSaved, canSeeHistory }) {
         </form>
       )}
 
-      {canSeeHistory && history.length > 0 && (
+      {canSeeHistory && (
         <section className="mt-lg">
           <h2 className="section-title">Conferências anteriores</h2>
+          <FilterBar
+            summary={`${visibleHistory.length} conferência(s)`}
+            canClear={JSON.stringify(historyFilters) !== JSON.stringify(EMPTY_HISTORY_FILTERS)}
+            onClear={() => setHistoryFilters(EMPTY_HISTORY_FILTERS)}
+          >
+            <PeriodFilter
+              value={historyFilters.period}
+              onChange={(period) => setHistoryFilters({ ...historyFilters, period })}
+              custom={historyFilters.custom}
+              onCustomChange={(custom) => setHistoryFilters({ ...historyFilters, custom })}
+            />
+            <SelectFilter
+              label="Responsável"
+              value={historyFilters.userId}
+              onChange={(userId) => setHistoryFilters({ ...historyFilters, userId })}
+              options={users.map((u) => ({ value: String(u.id), label: u.name }))}
+            />
+            <SelectFilter
+              label="Resultado"
+              value={historyFilters.onlyDiff}
+              onChange={(onlyDiff) => setHistoryFilters({ ...historyFilters, onlyDiff })}
+              allLabel="Todas"
+              options={[{ value: "yes", label: "Só com diferença" }]}
+            />
+          </FilterBar>
+          {visibleHistory.length === 0 && <p className="cart-empty">Nenhuma conferência com esses filtros.</p>}
           <div className="table-scroll">
             <table className="product-table">
               <thead>
@@ -210,7 +259,7 @@ export default function StockCount({ products, onSaved, canSeeHistory }) {
                 </tr>
               </thead>
               <tbody>
-                {history.map((count) => (
+                {visibleHistory.map((count) => (
                   <tr key={count.id}>
                     <td>
                       {formatDateTime(count.createdAt)}

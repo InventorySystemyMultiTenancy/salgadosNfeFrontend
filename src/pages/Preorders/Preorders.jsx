@@ -5,6 +5,8 @@ import * as clientService from "../../services/client.service";
 import { useSocket } from "../../contexts/SocketContext";
 import { IconChevronDown, IconClose, IconPlus } from "../../components/icons";
 import { MONEY_METHODS, PAYMENT_LABEL, formatMoney, formatTime } from "../../utils/format";
+import { FilterBar, SearchFilter, SelectFilter } from "../../components/Filters";
+import { matchesSearch } from "../../utils/filters";
 
 const STATUS_LABEL = {
   PENDING: "A produzir",
@@ -80,6 +82,9 @@ export default function Preorders() {
   const [saving, setSaving] = useState(false);
   const [delivering, setDelivering] = useState(null);
   const [balanceMethod, setBalanceMethod] = useState("CASH");
+  const [q, setQ] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [paymentFilter, setPaymentFilter] = useState("");
   const socket = useSocket();
 
   async function load(currentScope = scope) {
@@ -107,16 +112,31 @@ export default function Preorders() {
     return () => socket.off("preorder:updated", refresh);
   }, [socket, scope]);
 
+  const visiblePreorders = preorders.filter((preorder) => {
+    const balance = Number(preorder.totalAmount) - Number(preorder.depositAmount);
+    return (
+      matchesSearch(
+        q,
+        preorder.customerName,
+        preorder.customerPhone,
+        `#${preorder.id}`,
+        ...preorder.items.map((item) => item.product.name),
+      ) &&
+      (!statusFilter || preorder.status === statusFilter) &&
+      (!paymentFilter || (paymentFilter === "due") === balance > 0)
+    );
+  });
+
   const grouped = useMemo(() => {
     const groups = new Map();
-    for (const preorder of preorders) {
+    for (const preorder of visiblePreorders) {
       const date = new Date(preorder.deliveryAt);
       const key = date.toDateString();
       if (!groups.has(key)) groups.set(key, { heading: dayHeading(date), items: [] });
       groups.get(key).items.push(preorder);
     }
     return Array.from(groups.values());
-  }, [preorders]);
+  }, [visiblePreorders]);
 
   const formTotal = form
     ? form.items.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0), 0)
@@ -265,7 +285,39 @@ export default function Preorders() {
         </div>
       </div>
 
+      <FilterBar
+        summary={`${visiblePreorders.length} de ${preorders.length} encomenda(s)`}
+        canClear={Boolean(q || statusFilter || paymentFilter)}
+        onClear={() => {
+          setQ("");
+          setStatusFilter("");
+          setPaymentFilter("");
+        }}
+      >
+        <SearchFilter value={q} onChange={setQ} placeholder="Cliente, telefone, nº ou produto..." />
+        <SelectFilter
+          label="Status"
+          value={statusFilter}
+          onChange={setStatusFilter}
+          options={Object.entries(STATUS_LABEL)
+            .filter(([value]) => scope === "recent" || OPEN_STATUSES.includes(value))
+            .map(([value, label]) => ({ value, label }))}
+        />
+        <SelectFilter
+          label="Pagamento"
+          value={paymentFilter}
+          onChange={setPaymentFilter}
+          options={[
+            { value: "due", label: "Falta receber" },
+            { value: "paid", label: "Quitada" },
+          ]}
+        />
+      </FilterBar>
+
       {error && <p className="form-error">{error}</p>}
+      {preorders.length > 0 && visiblePreorders.length === 0 && (
+        <p className="cart-empty">Nenhuma encomenda com esses filtros.</p>
+      )}
       {preorders.length === 0 && !error && (
         <p className="cart-empty">
           {scope === "open" ? "Nenhuma encomenda em aberto." : "Nenhuma encomenda nos últimos 30 dias."}
@@ -332,7 +384,9 @@ export default function Preorders() {
                       {NEXT_STATUS[preorder.status] && (
                         <button
                           type="button"
-                          onClick={() => act(() => preorderService.setPreorderStatus(preorder.id, NEXT_STATUS[preorder.status]))}
+                          onClick={() =>
+                            act(() => preorderService.setPreorderStatus(preorder.id, NEXT_STATUS[preorder.status]))
+                          }
                         >
                           {NEXT_LABEL[preorder.status]}
                         </button>
@@ -369,7 +423,11 @@ export default function Preorders() {
 
       {form && (
         <div className="checkout-modal-overlay" onClick={() => !saving && setForm(null)}>
-          <form className="checkout-modal checkout-modal-wide" onClick={(e) => e.stopPropagation()} onSubmit={handleSubmit}>
+          <form
+            className="checkout-modal checkout-modal-wide"
+            onClick={(e) => e.stopPropagation()}
+            onSubmit={handleSubmit}
+          >
             <h2>{editingId ? `Editar encomenda #${editingId}` : "Nova encomenda"}</h2>
 
             <label htmlFor="po-client">Cliente cadastrado (opcional)</label>
@@ -474,7 +532,9 @@ export default function Preorders() {
               >
                 + Adicionar item
               </button>
-              <span className="field-hint">O preço unitário vem do cadastro, mas pode ser ajustado (ex: preço de cento).</span>
+              <span className="field-hint">
+                O preço unitário vem do cadastro, mas pode ser ajustado (ex: preço de cento).
+              </span>
             </div>
 
             <div className="checkout-modal-total">

@@ -2,6 +2,17 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import * as clientService from "../../services/client.service";
 import * as cnpjService from "../../services/cnpj.service";
+import { FilterBar, SearchFilter, SelectFilter } from "../../components/Filters";
+import { matchesSearch } from "../../utils/filters";
+
+const EMPTY_FILTERS = { q: "", type: "", balance: "" };
+
+function balanceStatus(client) {
+  const balance = Number(client.currentBalance);
+  if (balance <= 0) return "clear";
+  if (Number(client.creditLimit) > 0 && balance >= Number(client.creditLimit)) return "limit";
+  return "owing";
+}
 
 const emptyForm = {
   name: "",
@@ -27,6 +38,7 @@ export default function Clients() {
   const [error, setError] = useState("");
   const [cnpjLookupError, setCnpjLookupError] = useState("");
   const [lookingUpCnpj, setLookingUpCnpj] = useState(false);
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
 
   async function loadClients() {
     const data = await clientService.listClients();
@@ -129,12 +141,27 @@ export default function Clients() {
     await loadClients();
   }
 
+  const digitsOnly = (value) => String(value ?? "").replace(/\D/g, "");
+  const visibleClients = clients.filter((client) => {
+    const searchDigits = digitsOnly(filters.q);
+    const documentMatch =
+      searchDigits.length >= 3 &&
+      [client.cpf, client.cnpj, client.phone].some((value) => digitsOnly(value).includes(searchDigits));
+    const type = client.cnpj ? "pj" : client.cpf ? "pf" : "none";
+    const balance = balanceStatus(client);
+    return (
+      (documentMatch || matchesSearch(filters.q, client.name, client.phone, client.cpf, client.cnpj)) &&
+      (!filters.type || filters.type === type) &&
+      (!filters.balance || filters.balance === balance || (filters.balance === "owing" && balance === "limit"))
+    );
+  });
+
   return (
     <div className="page">
       <h1>Clientes</h1>
       <p className="cart-empty">
-        Cadastro usado tanto pra fiado/mensalistas (CPF) quanto pra clientes de nota fiscal (CNPJ).
-        Pra emitir a nota de um cliente, veja os pedidos dele em Fiscal.
+        Cadastro usado tanto pra fiado/mensalistas (CPF) quanto pra clientes de nota fiscal (CNPJ). Pra emitir a nota de
+        um cliente, veja os pedidos dele em Fiscal.
       </p>
 
       <form className="product-form" onSubmit={handleSubmit}>
@@ -182,9 +209,9 @@ export default function Clients() {
               onChange={(e) => handleChange("stateRegistration", e.target.value)}
             />
             <small className="field-hint">
-              A busca por CNPJ acima não traz a IE (é cadastro estadual, não federal — não tem fonte
-              gratuita confiável). Deixe em branco se o cliente não revende mercadoria (a maioria dos
-              casos) — preencher errado faz a nota fiscal ser recusada pela SEFAZ.
+              A busca por CNPJ acima não traz a IE (é cadastro estadual, não federal — não tem fonte gratuita
+              confiável). Deixe em branco se o cliente não revende mercadoria (a maioria dos casos) — preencher errado
+              faz a nota fiscal ser recusada pela SEFAZ.
             </small>
           </div>
           <div />
@@ -216,8 +243,8 @@ export default function Clients() {
 
         <h3>Endereço</h3>
         <p className="cart-empty">
-          Só é necessário se você emitir nota fiscal em nome desse cliente pela NFe.io — sem
-          endereço completo, a emissão pra esse cliente é recusada.
+          Só é necessário se você emitir nota fiscal em nome desse cliente pela NFe.io — sem endereço completo, a
+          emissão pra esse cliente é recusada.
         </p>
         <div className="form-row">
           <div>
@@ -301,6 +328,38 @@ export default function Clients() {
         </div>
       </form>
 
+      <FilterBar
+        summary={`${visibleClients.length} de ${clients.length} cliente(s)`}
+        canClear={JSON.stringify(filters) !== JSON.stringify(EMPTY_FILTERS)}
+        onClear={() => setFilters(EMPTY_FILTERS)}
+      >
+        <SearchFilter
+          value={filters.q}
+          onChange={(q) => setFilters({ ...filters, q })}
+          placeholder="Nome, telefone, CPF ou CNPJ..."
+        />
+        <SelectFilter
+          label="Tipo"
+          value={filters.type}
+          onChange={(type) => setFilters({ ...filters, type })}
+          options={[
+            { value: "pj", label: "Empresa (CNPJ)" },
+            { value: "pf", label: "Pessoa (CPF)" },
+            { value: "none", label: "Sem documento" },
+          ]}
+        />
+        <SelectFilter
+          label="Fiado"
+          value={filters.balance}
+          onChange={(balance) => setFilters({ ...filters, balance })}
+          options={[
+            { value: "owing", label: "Devendo" },
+            { value: "limit", label: "No limite de crédito" },
+            { value: "clear", label: "Sem débito" },
+          ]}
+        />
+      </FilterBar>
+
       <div className="table-scroll">
         <table className="product-table">
           <thead>
@@ -315,7 +374,7 @@ export default function Clients() {
             </tr>
           </thead>
           <tbody>
-            {clients.map((client) => (
+            {visibleClients.map((client) => (
               <tr key={client.id}>
                 <td>{client.name}</td>
                 <td>{client.phone}</td>

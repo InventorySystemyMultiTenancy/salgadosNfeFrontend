@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import * as cashService from "../../services/cash.service";
 import { useAuth } from "../../contexts/AuthContext";
 import { IconChevronDown } from "../../components/icons";
+import * as userService from "../../services/user.service";
+import { FilterBar, PeriodFilter, SelectFilter } from "../../components/Filters";
+import { periodParams } from "../../utils/filters";
+
+const EMPTY_HISTORY_FILTERS = { period: "30d", custom: { from: "", to: "" }, userId: "", situation: "" };
 import { MONEY_METHODS, PAYMENT_LABEL, formatDateTime, formatMoney, formatTime } from "../../utils/format";
 
 const MOVEMENT_LABEL = { SUPPLY: "Suprimento", WITHDRAWAL: "Sangria" };
@@ -23,9 +28,7 @@ function CashSummary({ summary }) {
         <div className="stat-tile stat-tile-hero">
           <span>Dinheiro esperado na gaveta</span>
           <strong>{formatMoney(summary.expectedCash)}</strong>
-          <small>
-            Abertura {formatMoney(summary.openingAmount)} + entradas em dinheiro + suprimentos − sangrias
-          </small>
+          <small>Abertura {formatMoney(summary.openingAmount)} + entradas em dinheiro + suprimentos − sangrias</small>
         </div>
         <div className="stat-tile">
           <span>Vendas no turno</span>
@@ -109,6 +112,8 @@ export default function Cash() {
   const isAdmin = user?.role === "ADMIN";
   const [session, setSession] = useState(undefined);
   const [history, setHistory] = useState([]);
+  const [historyFilters, setHistoryFilters] = useState(EMPTY_HISTORY_FILTERS);
+  const [users, setUsers] = useState([]);
   const [selected, setSelected] = useState(null);
   const [closedResult, setClosedResult] = useState(null);
   const [openingAmount, setOpeningAmount] = useState("");
@@ -118,14 +123,32 @@ export default function Cash() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
+  async function loadHistory(filters = historyFilters) {
+    if (!isAdmin) return;
+    setHistory(
+      await cashService.fetchCashSessions({
+        userId: filters.userId || undefined,
+        ...periodParams(filters.period, filters.custom),
+      }),
+    );
+  }
+
   async function load() {
     setSession(await cashService.fetchCurrentCash());
-    if (isAdmin) setHistory(await cashService.fetchCashSessions());
   }
 
   useEffect(() => {
     load().catch((err) => setError(err.response?.data?.error || "Erro ao carregar o caixa."));
+    if (isAdmin)
+      userService
+        .listUsers()
+        .then(setUsers)
+        .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    loadHistory(historyFilters).catch((err) => setError(err.response?.data?.error || "Erro ao carregar o histórico."));
+  }, [historyFilters.period, historyFilters.custom, historyFilters.userId]);
 
   async function run(action) {
     setBusy(true);
@@ -165,7 +188,7 @@ export default function Cash() {
       setSession(null);
       setCountedCash("");
       setNotes("");
-      if (isAdmin) setHistory(await cashService.fetchCashSessions());
+      await loadHistory();
     });
   }
 
@@ -183,6 +206,21 @@ export default function Cash() {
   }
 
   const countedValue = countedCash === "" ? null : Number(countedCash);
+  const visibleHistory = history.filter((item) => {
+    const difference = item.closedAt ? Number(item.countedCash) - Number(item.expectedCash) : null;
+    switch (historyFilters.situation) {
+      case "open":
+        return !item.closedAt;
+      case "diff":
+        return difference !== null && Math.abs(difference) >= 0.005;
+      case "short":
+        return difference !== null && difference <= -0.005;
+      case "ok":
+        return difference !== null && Math.abs(difference) < 0.005;
+      default:
+        return true;
+    }
+  });
 
   return (
     <div className="page">
@@ -308,9 +346,39 @@ export default function Cash() {
         </>
       )}
 
-      {isAdmin && history.length > 0 && (
+      {isAdmin && (
         <section className="mt-lg">
           <h2 className="section-title">Histórico de caixas</h2>
+          <FilterBar
+            summary={`${visibleHistory.length} caixa(s)`}
+            canClear={JSON.stringify(historyFilters) !== JSON.stringify(EMPTY_HISTORY_FILTERS)}
+            onClear={() => setHistoryFilters(EMPTY_HISTORY_FILTERS)}
+          >
+            <PeriodFilter
+              value={historyFilters.period}
+              onChange={(period) => setHistoryFilters({ ...historyFilters, period })}
+              custom={historyFilters.custom}
+              onCustomChange={(custom) => setHistoryFilters({ ...historyFilters, custom })}
+            />
+            <SelectFilter
+              label="Operador (abriu ou fechou)"
+              value={historyFilters.userId}
+              onChange={(userId) => setHistoryFilters({ ...historyFilters, userId })}
+              options={users.map((u) => ({ value: String(u.id), label: u.name }))}
+            />
+            <SelectFilter
+              label="Situação"
+              value={historyFilters.situation}
+              onChange={(situation) => setHistoryFilters({ ...historyFilters, situation })}
+              options={[
+                { value: "open", label: "Aberto" },
+                { value: "diff", label: "Fechado com diferença" },
+                { value: "short", label: "Fechado com falta" },
+                { value: "ok", label: "Fechado sem diferença" },
+              ]}
+            />
+          </FilterBar>
+          {visibleHistory.length === 0 && <p className="cart-empty">Nenhum caixa com esses filtros.</p>}
           <div className="table-scroll">
             <table className="product-table">
               <thead>
@@ -324,20 +392,28 @@ export default function Cash() {
                 </tr>
               </thead>
               <tbody>
-                {history.map((item) => (
+                {visibleHistory.map((item) => (
                   <tr key={item.id}>
                     <td>
                       {formatDateTime(item.openedAt)}
                       <div className="field-hint">{item.openedBy?.name}</div>
                     </td>
                     <td>
-                      {item.closedAt ? formatDateTime(item.closedAt) : <span className="status-pill status-pill-success">Aberto</span>}
+                      {item.closedAt ? (
+                        formatDateTime(item.closedAt)
+                      ) : (
+                        <span className="status-pill status-pill-success">Aberto</span>
+                      )}
                       {item.closedBy && <div className="field-hint">{item.closedBy.name}</div>}
                     </td>
                     <td>{item.expectedCash != null ? formatMoney(item.expectedCash) : "—"}</td>
                     <td>{item.countedCash != null ? formatMoney(item.countedCash) : "—"}</td>
                     <td>
-                      {item.closedAt ? <Difference value={Number(item.countedCash) - Number(item.expectedCash)} /> : "—"}
+                      {item.closedAt ? (
+                        <Difference value={Number(item.countedCash) - Number(item.expectedCash)} />
+                      ) : (
+                        "—"
+                      )}
                     </td>
                     <td className="table-actions">
                       <button type="button" onClick={() => openHistory(item.id)}>

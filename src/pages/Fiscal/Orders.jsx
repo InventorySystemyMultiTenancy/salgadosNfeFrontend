@@ -3,7 +3,9 @@ import { useSearchParams } from "react-router-dom";
 import * as orderService from "../../services/order.service";
 import * as fiscalService from "../../services/fiscal.service";
 import * as clientService from "../../services/client.service";
-import { IconChevronDown } from "../../components/icons";
+import * as userService from "../../services/user.service";
+import { FilterBar, Pagination, PeriodFilter, SearchFilter, SelectFilter } from "../../components/Filters";
+import { periodParams } from "../../utils/filters";
 import { printReceipt } from "../../utils/receiptPrint";
 import { printReceiptEscPos } from "../../utils/qzPrint";
 import { formatDateTime, formatMoney } from "../../utils/format";
@@ -16,12 +18,29 @@ const STATUS_LABEL = {
 };
 const PAYMENT_LABEL = { CASH: "Dinheiro", DEBIT: "Débito", CREDIT: "Crédito", PIX: "Pix", TAB: "Fiado" };
 const FISCAL_TYPE_LABEL = { NFCE: "NFC-e", NFE: "NF-e" };
+const PAGE_SIZE = 50;
+const EMPTY_FILTERS = {
+  q: "",
+  period: "30d",
+  custom: { from: "", to: "" },
+  paymentMethod: "",
+  fiscalStatus: "",
+  status: "",
+  sellerId: "",
+};
+const toOptions = (labels) => Object.entries(labels).map(([value, label]) => ({ value, label }));
 
 export default function Orders() {
   const [searchParams, setSearchParams] = useSearchParams();
   const clientId = searchParams.get("clientId") || "";
-  const [orders, setOrders] = useState([]);
+  const [result, setResult] = useState(null);
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  // Busca digitada só vai pro servidor depois de uma pausa, não a cada tecla.
+  const [debouncedQ, setDebouncedQ] = useState("");
+  const [page, setPage] = useState(1);
+  const [loadError, setLoadError] = useState("");
   const [clients, setClients] = useState([]);
+  const [sellers, setSellers] = useState([]);
   const [errors, setErrors] = useState({});
   const [companyInfo, setCompanyInfo] = useState({});
   const [cancelTarget, setCancelTarget] = useState(null);
@@ -30,26 +49,80 @@ export default function Orders() {
   const [canceling, setCanceling] = useState(false);
 
   async function load() {
-    const data = await orderService.fetchOrders({ clientId: clientId || undefined });
-    setOrders(data);
+    setLoadError("");
+    try {
+      const data = await orderService.fetchOrders({
+        clientId: clientId || undefined,
+        q: debouncedQ || undefined,
+        paymentMethod: filters.paymentMethod || undefined,
+        fiscalStatus: filters.fiscalStatus || undefined,
+        status: filters.status || undefined,
+        sellerId: filters.sellerId || undefined,
+        ...periodParams(filters.period, filters.custom),
+        page,
+        pageSize: PAGE_SIZE,
+      });
+      setResult(data);
+    } catch (err) {
+      setLoadError(err.response?.data?.error || "Erro ao carregar pedidos.");
+    }
   }
 
   useEffect(() => {
     clientService.listClients().then(setClients);
-    fiscalService.fetchFiscalSettings().then(setCompanyInfo).catch(() => {});
+    userService
+      .listUsers()
+      .then(setSellers)
+      .catch(() => {});
+    fiscalService
+      .fetchFiscalSettings()
+      .then(setCompanyInfo)
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQ(filters.q.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [filters.q]);
+
+  useEffect(() => {
     load();
-  }, [clientId]);
+  }, [
+    clientId,
+    debouncedQ,
+    filters.paymentMethod,
+    filters.fiscalStatus,
+    filters.status,
+    filters.sellerId,
+    filters.period,
+    filters.custom,
+    page,
+  ]);
+
+  // Qualquer filtro novo volta pra primeira página.
+  function updateFilter(changes) {
+    setFilters((current) => ({ ...current, ...changes }));
+    setPage(1);
+  }
 
   function handleClientFilterChange(value) {
+    setPage(1);
     if (value) {
       setSearchParams({ clientId: value });
     } else {
       setSearchParams({});
     }
   }
+
+  function clearFilters() {
+    setFilters(EMPTY_FILTERS);
+    setPage(1);
+    setSearchParams({});
+  }
+
+  const orders = result?.orders ?? [];
+  const totalPages = result ? Math.max(1, Math.ceil(result.total / result.pageSize)) : 1;
+  const hasActiveFilters = Boolean(clientId) || JSON.stringify(filters) !== JSON.stringify(EMPTY_FILTERS);
 
   async function handleEmit(orderId, emitFn) {
     setErrors((current) => ({ ...current, [orderId]: "" }));
@@ -97,23 +170,58 @@ export default function Orders() {
     <div className="page">
       <h1>Pedidos</h1>
 
-      <div className="form-row">
-        <div>
-          <label htmlFor="client-filter">Cliente</label>
-          <div className="select-wrap">
-            <select id="client-filter" value={clientId} onChange={(e) => handleClientFilterChange(e.target.value)}>
-              <option value="">Todos os pedidos</option>
-              {clients.map((client) => (
-                <option key={client.id} value={client.id}>
-                  {client.name} {client.cnpj ? `(CNPJ ${client.cnpj})` : client.cpf ? `(CPF ${client.cpf})` : ""}
-                </option>
-              ))}
-            </select>
-            <IconChevronDown />
-          </div>
-        </div>
-        <div />
-      </div>
+      <FilterBar
+        canClear={hasActiveFilters}
+        onClear={clearFilters}
+        summary={result && `${result.total} pedido(s) · ${formatMoney(result.totalAmount)} em vendas válidas`}
+      >
+        <SearchFilter
+          value={filters.q}
+          onChange={(q) => updateFilter({ q })}
+          placeholder="Nº do pedido, nome do cliente, CPF ou CNPJ..."
+        />
+        <PeriodFilter
+          value={filters.period}
+          onChange={(period) => updateFilter({ period })}
+          custom={filters.custom}
+          onCustomChange={(custom) => updateFilter({ custom })}
+        />
+        <SelectFilter
+          label="Cliente"
+          value={clientId}
+          onChange={handleClientFilterChange}
+          allLabel="Todos os clientes"
+          options={clients.map((client) => ({ value: String(client.id), label: client.name }))}
+        />
+        <SelectFilter
+          label="Pagamento"
+          value={filters.paymentMethod}
+          onChange={(paymentMethod) => updateFilter({ paymentMethod })}
+          options={toOptions(PAYMENT_LABEL)}
+        />
+        <SelectFilter
+          label="Nota fiscal"
+          value={filters.fiscalStatus}
+          onChange={(fiscalStatus) => updateFilter({ fiscalStatus })}
+          options={toOptions(STATUS_LABEL)}
+        />
+        <SelectFilter
+          label="Situação"
+          value={filters.status}
+          onChange={(status) => updateFilter({ status })}
+          options={[
+            { value: "active", label: "Válidos" },
+            { value: "canceled", label: "Cancelados" },
+          ]}
+        />
+        <SelectFilter
+          label="Vendedor"
+          value={filters.sellerId}
+          onChange={(sellerId) => updateFilter({ sellerId })}
+          options={sellers.map((seller) => ({ value: String(seller.id), label: seller.name }))}
+        />
+      </FilterBar>
+      {loadError && <p className="form-error">{loadError}</p>}
       {clientId && !selectedClient && <p className="cart-empty">Carregando cliente...</p>}
       {selectedClient && !selectedClient.cnpj && !selectedClient.cpf && (
         <p className="form-error">
@@ -204,7 +312,12 @@ export default function Orders() {
           </tbody>
         </table>
       </div>
-      {orders.length === 0 && <p className="cart-empty">Nenhum pedido registrado ainda.</p>}
+      {result && orders.length === 0 && (
+        <p className="cart-empty">
+          {hasActiveFilters ? "Nenhum pedido com esses filtros." : "Nenhum pedido registrado ainda."}
+        </p>
+      )}
+      <Pagination page={page} totalPages={totalPages} onChange={setPage} />
 
       {cancelTarget && (
         <div className="checkout-modal-overlay" onClick={() => !canceling && setCancelTarget(null)}>
@@ -226,7 +339,9 @@ export default function Orders() {
                 </li>
               )}
               {cancelTarget.paymentMethod === "CASH" && (
-                <li className="cancel-effects-warn">Se devolver o dinheiro ao cliente, registre uma sangria no Caixa.</li>
+                <li className="cancel-effects-warn">
+                  Se devolver o dinheiro ao cliente, registre uma sangria no Caixa.
+                </li>
               )}
             </ul>
             <label htmlFor="cancel-reason">Motivo</label>

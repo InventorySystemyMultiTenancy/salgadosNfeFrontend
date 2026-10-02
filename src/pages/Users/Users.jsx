@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import * as userService from "../../services/user.service";
 import { IconChevronDown } from "../../components/icons";
+import { FilterBar, SearchFilter, SelectFilter } from "../../components/Filters";
+import { matchesSearch } from "../../utils/filters";
 
 const ROLE_LABEL = { ADMIN: "Administrador", SELLER: "Vendedor", KITCHEN: "Cozinha" };
 const emptyForm = { name: "", email: "", password: "", role: "SELLER" };
@@ -10,6 +12,8 @@ export default function Users() {
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState("");
+  const [q, setQ] = useState("");
+  const [role, setRole] = useState("");
 
   async function loadUsers() {
     const data = await userService.listUsers();
@@ -38,6 +42,8 @@ export default function Users() {
       setError(err.response?.data?.error || "Erro ao criar usuário.");
     }
   }
+
+  const visibleUsers = users.filter((user) => matchesSearch(q, user.name, user.email) && (!role || user.role === role));
 
   return (
     <div className="page">
@@ -92,6 +98,23 @@ export default function Users() {
         </div>
       </form>
 
+      <FilterBar
+        summary={`${visibleUsers.length} de ${users.length} usuário(s)`}
+        canClear={Boolean(q || role)}
+        onClear={() => {
+          setQ("");
+          setRole("");
+        }}
+      >
+        <SearchFilter value={q} onChange={setQ} placeholder="Nome ou e-mail..." />
+        <SelectFilter
+          label="Perfil"
+          value={role}
+          onChange={setRole}
+          options={Object.entries(ROLE_LABEL).map(([value, label]) => ({ value, label }))}
+        />
+      </FilterBar>
+
       <div className="table-scroll">
         <table className="product-table">
           <thead>
@@ -102,7 +125,7 @@ export default function Users() {
             </tr>
           </thead>
           <tbody>
-            {users.map((user) => (
+            {visibleUsers.map((user) => (
               <tr key={user.id}>
                 <td>{user.name}</td>
                 <td>{user.email}</td>

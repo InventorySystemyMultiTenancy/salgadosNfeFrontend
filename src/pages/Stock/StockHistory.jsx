@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import * as stockService from "../../services/stock.service";
-import { IconChevronDown } from "../../components/icons";
 import { formatDateTime } from "../../utils/format";
-
-const DAY_MS = 24 * 60 * 60 * 1000;
+import { FilterBar, PeriodFilter, SearchFilter, SelectFilter } from "../../components/Filters";
+import { matchesSearch, PERIOD_OPTIONS, periodRange } from "../../utils/filters";
 
 const MOVEMENT_LABEL = {
   ENTRY: "Entrada",
@@ -23,84 +22,73 @@ const MOVEMENT_PILL = {
   SALE_CANCEL: "status-pill-neutral",
 };
 
-const PERIODS = [
-  { id: "1", label: "Hoje" },
-  { id: "7", label: "7 dias" },
-  { id: "30", label: "30 dias" },
-  { id: "90", label: "90 dias" },
-];
+// O histórico de estoque sempre tem limite de período no servidor (até 1 ano), então sem "Tudo".
+const PERIODS = PERIOD_OPTIONS.filter((option) => option.value !== "all");
+const EMPTY_FILTERS = { period: "7d", custom: { from: "", to: "" }, productId: "", type: "", q: "" };
 
 const LIMIT = 300;
 
-function periodRange(days) {
-  const end = new Date(Date.now() + 60 * 1000);
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  start.setTime(start.getTime() - (Number(days) - 1) * DAY_MS);
-  return { from: start, to: end };
-}
-
 export default function StockHistory({ products }) {
-  const [period, setPeriod] = useState("7");
-  const [productId, setProductId] = useState("");
-  const [type, setType] = useState("");
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [movements, setMovements] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    const range = periodRange(filters.period, filters.custom);
+    // Datas personalizadas pela metade: espera a outra ponta.
+    if (!range || !range.from || !range.to) return;
     setError("");
     stockService
-      .fetchStockMovements({ productId, type, ...periodRange(period) })
+      .fetchStockMovements({ productId: filters.productId, type: filters.type, ...range })
       .then(setMovements)
       .catch((err) => setError(err.response?.data?.error || "Erro ao carregar o histórico."));
-  }, [period, productId, type]);
+  }, [filters.period, filters.custom, filters.productId, filters.type]);
+
+  const set = (changes) => setFilters({ ...filters, ...changes });
+  const visibleMovements = (movements ?? []).filter((m) =>
+    matchesSearch(filters.q, m.reason, m.user?.name, m.orderId ? `#${m.orderId}` : "", m.orderId),
+  );
 
   // Totais por tipo no período — mostra rápido quanto entrou, vendeu e se perdeu.
-  const totals = (movements ?? []).reduce((acc, m) => {
+  const totals = visibleMovements.reduce((acc, m) => {
     acc[m.type] = (acc[m.type] ?? 0) + m.quantity;
     return acc;
   }, {});
 
   return (
     <>
-      <div className="stock-history-filters">
-        <div className="segmented" role="tablist">
-          {PERIODS.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              role="tab"
-              aria-selected={period === p.id}
-              className={period === p.id ? "active" : ""}
-              onClick={() => setPeriod(p.id)}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-        <div className="select-wrap">
-          <select aria-label="Produto" value={productId} onChange={(e) => setProductId(e.target.value)}>
-            <option value="">Todos os produtos</option>
-            {products.map((product) => (
-              <option key={product.id} value={product.id}>
-                {product.name}
-              </option>
-            ))}
-          </select>
-          <IconChevronDown />
-        </div>
-        <div className="select-wrap">
-          <select aria-label="Tipo de movimentação" value={type} onChange={(e) => setType(e.target.value)}>
-            <option value="">Todos os tipos</option>
-            {Object.entries(MOVEMENT_LABEL).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-          <IconChevronDown />
-        </div>
-      </div>
+      <FilterBar
+        summary={movements && `${visibleMovements.length} movimentação(ões)`}
+        canClear={JSON.stringify(filters) !== JSON.stringify(EMPTY_FILTERS)}
+        onClear={() => setFilters(EMPTY_FILTERS)}
+      >
+        <PeriodFilter
+          value={filters.period}
+          onChange={(period) => set({ period })}
+          custom={filters.custom}
+          onCustomChange={(custom) => set({ custom })}
+          options={PERIODS}
+        />
+        <SelectFilter
+          label="Produto"
+          value={filters.productId}
+          onChange={(productId) => set({ productId })}
+          options={products.map((product) => ({ value: String(product.id), label: product.name }))}
+        />
+        <SelectFilter
+          label="Tipo"
+          value={filters.type}
+          onChange={(type) => set({ type })}
+          options={Object.entries(MOVEMENT_LABEL).map(([value, label]) => ({ value, label }))}
+        />
+        <SearchFilter
+          value={filters.q}
+          onChange={(q) => set({ q })}
+          label="Motivo / usuário / pedido"
+          placeholder="Ex: vencido, Maria, #120..."
+          wide={false}
+        />
+      </FilterBar>
 
       {error && <p className="form-error">{error}</p>}
       {!movements && !error && <p className="cart-empty">Carregando...</p>}
@@ -145,7 +133,7 @@ export default function StockHistory({ products }) {
                 </tr>
               </thead>
               <tbody>
-                {movements.map((m) => (
+                {visibleMovements.map((m) => (
                   <tr key={m.id}>
                     <td>{formatDateTime(m.createdAt)}</td>
                     <td>{m.product.name}</td>
@@ -169,7 +157,7 @@ export default function StockHistory({ products }) {
               </tbody>
             </table>
           </div>
-          {movements.length === 0 && <p className="cart-empty">Nenhuma movimentação no período.</p>}
+          {visibleMovements.length === 0 && <p className="cart-empty">Nenhuma movimentação no período.</p>}
         </>
       )}
     </>
