@@ -181,3 +181,38 @@ export function IconUtensils(props) {
     </Svg>
   );
 }
+
+export function IconMail(props) {
+  return (
+    <Svg {...props}>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="m4 7 8 6 8-6" />
+    </Svg>
+  );
+}
+
+export function IconLock(props) {
+  return (
+    <Svg {...props}>
+      <rect x="4.5" y="10.5" width="15" height="10" rx="2" />
+      <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
+    </Svg>
+  );
+}
+
+export function IconEye(props) {
+  return (
+    <Svg {...props}>
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
+      <circle cx="12" cy="12" r="2.8" />
+    </Svg>
+  );
+}
+
+export function IconEyeOff(props) {
+  return (
+    <Svg {...props}>
+      <path d="M3 3l18 18M10.6 6a9.7 9.7 0 0 1 1.4-.1c6 0 9.5 6.1 9.5 6.1a17 17 0 0 1-2.8 3.5M6.3 7.4C3.9 9.1 2.5 12 2.5 12S6 18.5 12 18.5c1.6 0 3-.4 4.2-1M9.9 9.9a2.8 2.8 0 0 0 4 4" />
+    </Svg>
+  );
+}

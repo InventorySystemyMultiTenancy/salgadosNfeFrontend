@@ -199,48 +199,191 @@ h3 {
 
 /* Login */
 .login-page {
-  min-height: calc(100vh - 60px);
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(380px, 46%) 1fr;
+  background: var(--color-bg);
+}
+
+.login-brand {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 3rem 2rem;
+  color: #fff;
+  text-align: center;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.16), transparent 42%),
+    radial-gradient(circle at 85% 90%, rgba(255, 196, 120, 0.28), transparent 45%),
+    linear-gradient(150deg, var(--color-primary-bright) 0%, var(--color-primary) 55%, var(--color-primary-dark) 100%);
+}
+
+/* O logo tem fundo de foto até a borda: entra como uma foto emoldurada, não solto na tela. */
+.login-brand-logo {
+  width: min(300px, 70%);
+  aspect-ratio: 380 / 504;
+  object-fit: cover;
+  border-radius: 28px;
+  border: 6px solid rgba(255, 255, 255, 0.92);
+  box-shadow: 0 30px 60px -24px rgba(60, 20, 0, 0.55);
+  margin-bottom: 1.4rem;
+}
+
+.login-brand h2 {
+  margin: 0;
+  font-size: 1.9rem;
+  letter-spacing: -0.01em;
+}
+
+.login-brand p {
+  margin: 0;
+  font-size: 0.98rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.login-main {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 2rem 1.25rem;
 }
 
 .login-card {
-  background: var(--color-surface);
-  padding: 2rem;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border);
-  box-shadow: var(--shadow-card);
-  width: 320px;
+  width: 100%;
+  max-width: 380px;
   display: flex;
   flex-direction: column;
 }
 
-.login-logo {
-  width: 65%;
-  max-width: 190px;
-  margin: 0 auto 0.5rem;
-  display: block;
+.login-mobile-logo {
+  display: none;
 }
 
-.login-card p {
+.login-card h1 {
+  margin: 0;
+  font-size: 1.7rem;
+  letter-spacing: -0.01em;
+}
+
+.login-subtitle {
+  margin: 0.4rem 0 1.6rem;
   color: var(--color-muted);
-  margin-top: 0.25rem;
-  text-align: center;
 }
 
-.login-card button {
-  margin-top: 1.5rem;
-  background: var(--color-primary-bright);
-  color: #fff;
+.login-card label {
+  margin-top: 0.9rem;
+  margin-bottom: 0.35rem;
+}
+
+.login-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.login-field > svg {
+  position: absolute;
+  left: 0.85rem;
+  color: var(--color-muted);
+  pointer-events: none;
+}
+
+.login-field input {
+  padding: 0.8rem 0.9rem 0.8rem 2.6rem;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border-color: var(--color-border-strong);
+}
+
+.login-field input:focus {
+  border-color: var(--color-primary);
+}
+
+/* Autocomplete do Chrome pinta o campo de azul — mantém a cor do formulário. */
+.login-field input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 40px var(--color-surface) inset;
+  -webkit-text-fill-color: var(--color-text);
+}
+
+.login-field input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 40px var(--color-surface) inset, 0 0 0 3px var(--color-primary-soft);
+}
+
+.login-toggle-password {
+  position: absolute;
+  right: 0.45rem;
+  display: flex;
+  padding: 0.4rem;
   border: none;
-  padding: 0.7rem;
   border-radius: var(--radius-sm);
-  font-weight: 600;
+  background: none;
+  color: var(--color-muted);
 }
 
-.login-card button:hover {
+.login-toggle-password:hover {
+  color: var(--color-text);
+  background: var(--color-field);
+}
+
+.login-field:has(.login-toggle-password) input {
+  padding-right: 2.8rem;
+}
+
+.login-error {
+  margin: 0.9rem 0 0;
+}
+
+.login-submit {
+  margin-top: 1.6rem;
+  padding: 0.9rem;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  box-shadow: 0 10px 22px -12px rgba(217, 72, 15, 0.8);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.login-submit:hover:not(:disabled) {
   background: var(--color-primary-dark);
+  transform: translateY(-1px);
+}
+
+.login-submit:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+@media (max-width: 860px) {
+  .login-page {
+    grid-template-columns: 1fr;
+  }
+
+  .login-brand {
+    display: none;
+  }
+
+  .login-mobile-logo {
+    display: block;
+    width: 96px;
+    aspect-ratio: 1;
+    object-fit: cover;
+    object-position: center 30%;
+    border-radius: 24px;
+    box-shadow: var(--shadow-card);
+    margin: 0 auto 1.4rem;
+  }
+
+  .login-card h1,
+  .login-subtitle {
+    text-align: center;
+  }
 }
 
 /* Generic page */
@@ -1187,11 +1330,6 @@ h3 {
   .product-grid {
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 0.75rem;
-  }
-
-  .login-card {
-    width: calc(100vw - 2.5rem);
-    max-width: 320px;
   }
 }
 
