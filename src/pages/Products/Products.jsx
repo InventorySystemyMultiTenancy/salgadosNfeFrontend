@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import * as productService from "../../services/product.service";
-import { IconUtensils } from "../../components/icons";
+import { IconPlus, IconUtensils } from "../../components/icons";
 import { FilterBar, SearchFilter, SelectFilter } from "../../components/Filters";
 import { matchesSearch } from "../../utils/filters";
 
@@ -18,6 +18,8 @@ export default function Products() {
   const [products, setProducts] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
+  // O formulário só aparece ao clicar em "Novo produto" ou "Editar" — a tela abre direto na lista.
+  const [formOpen, setFormOpen] = useState(false);
   const [error, setError] = useState("");
   const [uploadingId, setUploadingId] = useState(null);
   const [uploadError, setUploadError] = useState("");
@@ -40,7 +42,17 @@ export default function Products() {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
+  function openNew() {
+    setEditingId(null);
+    setForm(emptyForm);
+    setError("");
+    setFormOpen(true);
+  }
+
   function startEdit(product) {
+    setError("");
+    setFormOpen(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
     setEditingId(product.id);
     setForm({
       name: product.name,
@@ -56,6 +68,7 @@ export default function Products() {
   function cancelEdit() {
     setEditingId(null);
     setForm(emptyForm);
+    setFormOpen(false);
   }
 
   async function handleSubmit(event) {
@@ -121,81 +134,93 @@ export default function Products() {
     <div className="page">
       <h1>Cadastro de Produtos</h1>
 
-      <form className="product-form" onSubmit={handleSubmit}>
-        <div className="form-row">
-          <div>
-            <label htmlFor="name">Nome</label>
-            <input id="name" value={form.name} onChange={(e) => handleChange("name", e.target.value)} required />
-          </div>
-          <div>
-            <label htmlFor="category">Categoria</label>
-            <input
-              id="category"
-              value={form.category}
-              onChange={(e) => handleChange("category", e.target.value)}
-              required
-            />
+      {!formOpen && (
+        <div className="page-toolbar">
+          <span />
+          <div className="form-actions toolbar-actions">
+            <button type="button" onClick={openNew}>
+              <IconPlus size={15} /> Novo produto
+            </button>
           </div>
         </div>
-        <div className="form-row">
-          <div>
-            <label htmlFor="price">Preço (R$)</label>
-            <input
-              id="price"
-              type="number"
-              step="0.01"
-              min="0"
-              value={form.price}
-              onChange={(e) => handleChange("price", e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="stock">Estoque</label>
-            <input
-              id="stock"
-              type="number"
-              min="0"
-              value={form.stockQuantity}
-              onChange={(e) => handleChange("stockQuantity", e.target.value)}
-            />
-          </div>
-        </div>
-        <div className="form-row">
-          <div>
-            <label htmlFor="ncm">NCM</label>
-            <input id="ncm" value={form.ncm} onChange={(e) => handleChange("ncm", e.target.value)} />
-          </div>
-          <div>
-            <label htmlFor="cfop">CFOP</label>
-            <input id="cfop" value={form.cfop} onChange={(e) => handleChange("cfop", e.target.value)} />
-          </div>
-        </div>
-        <div className="form-row">
-          <div>
-            <label htmlFor="minStockAlert">Estoque mínimo (alerta)</label>
-            <input
-              id="minStockAlert"
-              type="number"
-              min="0"
-              value={form.minStockAlert}
-              onChange={(e) => handleChange("minStockAlert", e.target.value)}
-            />
-          </div>
-          <div />
-        </div>
+      )}
 
-        {error && <p className="form-error">{error}</p>}
+      {formOpen && (
+        <form className="product-form" onSubmit={handleSubmit}>
+          <h3>{editingId ? `Editar produto: ${form.name}` : "Novo produto"}</h3>
+          <div className="form-row">
+            <div>
+              <label htmlFor="name">Nome</label>
+              <input id="name" value={form.name} onChange={(e) => handleChange("name", e.target.value)} required />
+            </div>
+            <div>
+              <label htmlFor="category">Categoria</label>
+              <input
+                id="category"
+                value={form.category}
+                onChange={(e) => handleChange("category", e.target.value)}
+                required
+              />
+            </div>
+          </div>
+          <div className="form-row">
+            <div>
+              <label htmlFor="price">Preço (R$)</label>
+              <input
+                id="price"
+                type="number"
+                step="0.01"
+                min="0"
+                value={form.price}
+                onChange={(e) => handleChange("price", e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor="stock">Estoque</label>
+              <input
+                id="stock"
+                type="number"
+                min="0"
+                value={form.stockQuantity}
+                onChange={(e) => handleChange("stockQuantity", e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="form-row">
+            <div>
+              <label htmlFor="ncm">NCM</label>
+              <input id="ncm" value={form.ncm} onChange={(e) => handleChange("ncm", e.target.value)} />
+            </div>
+            <div>
+              <label htmlFor="cfop">CFOP</label>
+              <input id="cfop" value={form.cfop} onChange={(e) => handleChange("cfop", e.target.value)} />
+            </div>
+          </div>
+          <div className="form-row">
+            <div>
+              <label htmlFor="minStockAlert">Estoque mínimo (alerta)</label>
+              <input
+                id="minStockAlert"
+                type="number"
+                min="0"
+                value={form.minStockAlert}
+                onChange={(e) => handleChange("minStockAlert", e.target.value)}
+              />
+            </div>
+            <div />
+          </div>
 
-        <div className="form-actions">
-          <button type="submit">{editingId ? "Salvar alterações" : "Adicionar produto"}</button>
-          {editingId && (
+          {error && <p className="form-error">{error}</p>}
+
+          <div className="form-actions">
+            <button type="submit">{editingId ? "Salvar alterações" : "Adicionar produto"}</button>
             <button type="button" className="secondary" onClick={cancelEdit}>
               Cancelar
             </button>
-          )}
-        </div>
-      </form>
+          </div>
+        </form>
+      )}
 
       {uploadError && <p className="form-error">{uploadError}</p>}
 
