@@ -33,13 +33,12 @@ export default function Navbar() {
   const cooks = isAdmin || user.role === "KITCHEN";
 
   return (
-    <aside className="sidebar">
-      <div className="sidebar-brand">
+    <header className="topbar">
+      <div className="topbar-brand">
         <img src="/selfmachine-wide.png" alt="SelfMachine" />
       </div>
 
-      <nav className="sidebar-nav">
-        <span className="sidebar-section">Operação</span>
+      <nav className="topbar-nav">
         {sells && (
           <NavLink to="/" end>
             <IconPDV /> PDV
@@ -66,7 +65,6 @@ export default function Navbar() {
 
         {isAdmin && (
           <>
-            <span className="sidebar-section">Gestão</span>
             <NavLink to="/relatorios">
               <IconChart /> Relatórios
             </NavLink>
@@ -82,8 +80,6 @@ export default function Navbar() {
             <NavLink to="/fiscal/pedidos">
               <IconFiscal /> Pedidos
             </NavLink>
-
-            <span className="sidebar-section">Configurações</span>
             <NavLink to="/usuarios">
               <IconUsuarios /> Usuários
             </NavLink>
@@ -97,9 +93,9 @@ export default function Navbar() {
         )}
       </nav>
 
-      <div className="sidebar-user">
-        <img src="/selfmachine-icon.png" alt="" className="sidebar-user-mark" />
-        <span className="sidebar-user-text">
+      <div className="topbar-user">
+        <img src="/selfmachine-icon.png" alt="" className="topbar-user-mark" />
+        <span className="topbar-user-text">
           {user.name}
           <small>{ROLE_LABEL[user.role] || user.role}</small>
         </span>
@@ -107,6 +103,6 @@ export default function Navbar() {
           <IconLogout />
         </button>
       </div>
-    </aside>
+    </header>
   );
 }

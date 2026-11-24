@@ -39,124 +39,120 @@ function HomeRoute() {
 }
 
 function AppRoutes() {
-  const { user } = useAuth();
-
   return (
     <BrowserRouter>
-      <div className={user ? "app-shell" : undefined}>
-        <Navbar />
-        <main className={user ? "app-main" : undefined}>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/" element={<HomeRoute />} />
-            <Route
-              path="/produtos"
-              element={
-                <PrivateRoute roles={["ADMIN"]}>
-                  <Products />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/clientes"
-              element={
-                <PrivateRoute roles={["ADMIN"]}>
-                  <Clients />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/cobranca"
-              element={
-                <PrivateRoute roles={["ADMIN"]}>
-                  <DuePanel />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/clientes/:id/extrato"
-              element={
-                <PrivateRoute roles={["ADMIN"]}>
-                  <Statement />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/cozinha"
-              element={
-                <PrivateRoute roles={["ADMIN", "KITCHEN"]}>
-                  <Kitchen />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/estoque"
-              element={
-                <PrivateRoute roles={["ADMIN", "SELLER", "KITCHEN"]}>
-                  <Stock />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/usuarios"
-              element={
-                <PrivateRoute roles={["ADMIN"]}>
-                  <Users />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/fiscal/config"
-              element={
-                <PrivateRoute roles={["ADMIN"]}>
-                  <FiscalSettings />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/fiscal/pedidos"
-              element={
-                <PrivateRoute roles={["ADMIN"]}>
-                  <FiscalOrders />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/pagamentos/config"
-              element={
-                <PrivateRoute roles={["ADMIN"]}>
-                  <PaymentSettings />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/caixa"
-              element={
-                <PrivateRoute roles={["ADMIN", "SELLER"]}>
-                  <Cash />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/encomendas"
-              element={
-                <PrivateRoute roles={["ADMIN", "SELLER"]}>
-                  <Preorders />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/relatorios"
-              element={
-                <PrivateRoute roles={["ADMIN"]}>
-                  <Reports />
-                </PrivateRoute>
-              }
-            />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </main>
-      </div>
+      <Navbar />
+      <main>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/" element={<HomeRoute />} />
+          <Route
+            path="/produtos"
+            element={
+              <PrivateRoute roles={["ADMIN"]}>
+                <Products />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/clientes"
+            element={
+              <PrivateRoute roles={["ADMIN"]}>
+                <Clients />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/cobranca"
+            element={
+              <PrivateRoute roles={["ADMIN"]}>
+                <DuePanel />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/clientes/:id/extrato"
+            element={
+              <PrivateRoute roles={["ADMIN"]}>
+                <Statement />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/cozinha"
+            element={
+              <PrivateRoute roles={["ADMIN", "KITCHEN"]}>
+                <Kitchen />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/estoque"
+            element={
+              <PrivateRoute roles={["ADMIN", "SELLER", "KITCHEN"]}>
+                <Stock />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/usuarios"
+            element={
+              <PrivateRoute roles={["ADMIN"]}>
+                <Users />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/fiscal/config"
+            element={
+              <PrivateRoute roles={["ADMIN"]}>
+                <FiscalSettings />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/fiscal/pedidos"
+            element={
+              <PrivateRoute roles={["ADMIN"]}>
+                <FiscalOrders />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/pagamentos/config"
+            element={
+              <PrivateRoute roles={["ADMIN"]}>
+                <PaymentSettings />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/caixa"
+            element={
+              <PrivateRoute roles={["ADMIN", "SELLER"]}>
+                <Cash />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/encomendas"
+            element={
+              <PrivateRoute roles={["ADMIN", "SELLER"]}>
+                <Preorders />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/relatorios"
+            element={
+              <PrivateRoute roles={["ADMIN"]}>
+                <Reports />
+              </PrivateRoute>
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </main>
     </BrowserRouter>
   );
 }
