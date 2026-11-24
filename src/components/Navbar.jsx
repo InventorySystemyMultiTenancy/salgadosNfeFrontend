@@ -17,26 +17,35 @@ import {
   IconCalendar,
 } from "./icons";
 
+const ROLE_LABEL = {
+  ADMIN: "Administrador",
+  SELLER: "Vendedor",
+  KITCHEN: "Cozinha",
+};
+
 export default function Navbar() {
   const { user, logout } = useAuth();
 
   if (!user) return null;
 
-  const initial = user.name?.trim()?.[0]?.toUpperCase() || "?";
+  const isAdmin = user.role === "ADMIN";
+  const sells = isAdmin || user.role === "SELLER";
+  const cooks = isAdmin || user.role === "KITCHEN";
 
   return (
-    <header className="navbar">
-      <span className="navbar-brand">
-        <img src="/logo-icon.png" alt="" className="navbar-brand-mark" />
-        Sabor da Hora
-      </span>
-      <nav className="navbar-links">
-        {(user.role === "ADMIN" || user.role === "SELLER") && (
+    <aside className="sidebar">
+      <div className="sidebar-brand">
+        <img src="/selfmachine-wide.png" alt="SelfMachine" />
+      </div>
+
+      <nav className="sidebar-nav">
+        <span className="sidebar-section">Operação</span>
+        {sells && (
           <NavLink to="/" end>
             <IconPDV /> PDV
           </NavLink>
         )}
-        {(user.role === "ADMIN" || user.role === "SELLER") && (
+        {sells && (
           <>
             <NavLink to="/caixa">
               <IconCaixa /> Caixa
@@ -46,7 +55,7 @@ export default function Navbar() {
             </NavLink>
           </>
         )}
-        {(user.role === "ADMIN" || user.role === "KITCHEN") && (
+        {cooks && (
           <NavLink to="/cozinha">
             <IconCozinha /> Cozinha
           </NavLink>
@@ -54,8 +63,10 @@ export default function Navbar() {
         <NavLink to="/estoque">
           <IconEstoque /> Estoque
         </NavLink>
-        {user.role === "ADMIN" && (
+
+        {isAdmin && (
           <>
+            <span className="sidebar-section">Gestão</span>
             <NavLink to="/relatorios">
               <IconChart /> Relatórios
             </NavLink>
@@ -68,39 +79,34 @@ export default function Navbar() {
             <NavLink to="/cobranca">
               <IconCobranca /> Cobrança
             </NavLink>
-            <NavLink to="/usuarios">
-              <IconUsuarios /> Usuários
-            </NavLink>
             <NavLink to="/fiscal/pedidos">
               <IconFiscal /> Pedidos
             </NavLink>
+
+            <span className="sidebar-section">Configurações</span>
+            <NavLink to="/usuarios">
+              <IconUsuarios /> Usuários
+            </NavLink>
             <NavLink to="/fiscal/config">
-              <IconConfig /> Config. Fiscal
+              <IconConfig /> Fiscal
             </NavLink>
             <NavLink to="/pagamentos/config">
-              <IconCard /> Config. Pagamento
+              <IconCard /> Pagamento
             </NavLink>
           </>
         )}
       </nav>
-      <div className="navbar-user">
-        <img
-          src="/selfmachine-wide.png"
-          alt="SelfMachine"
-          title="Sistema SelfMachine"
-          className="navbar-selfmachine"
-        />
-        <div className="navbar-user-info">
-          <span className="navbar-avatar">{initial}</span>
-          <span className="navbar-user-text">
-            {user.name}
-            <small>{user.role}</small>
-          </span>
-        </div>
-        <button type="button" onClick={logout}>
-          <IconLogout /> Sair
+
+      <div className="sidebar-user">
+        <img src="/selfmachine-icon.png" alt="" className="sidebar-user-mark" />
+        <span className="sidebar-user-text">
+          {user.name}
+          <small>{ROLE_LABEL[user.role] || user.role}</small>
+        </span>
+        <button type="button" onClick={logout} title="Sair" aria-label="Sair">
+          <IconLogout />
         </button>
       </div>
-    </header>
+    </aside>
   );
 }

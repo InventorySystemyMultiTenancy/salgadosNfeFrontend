@@ -29,18 +29,13 @@ export default function Login() {
   return (
     <div className="login-page">
       <aside className="login-brand">
-        <img src="/logo-full.png" alt="Sabor da Hora" className="login-brand-logo" />
-        <h2>Sabor da Hora</h2>
-        <p>Loja de salgados · Qualidade & tradição desde 2024</p>
-        <div className="login-selfmachine">
-          <span>Sistema desenvolvido por</span>
-          <img src="/selfmachine-wide.png" alt="SelfMachine" />
-        </div>
+        <img src="/selfmachine-logo-t.png" alt="SelfMachine" className="login-brand-logo" />
+        <p>PDV, estoque, cozinha, caderneta e nota fiscal em um só sistema.</p>
       </aside>
 
       <main className="login-main">
         <form className="login-card" onSubmit={handleSubmit}>
-          <img src="/logo-full.png" alt="" className="login-mobile-logo" />
+          <img src="/selfmachine-icon.png" alt="SelfMachine" className="login-mobile-logo" />
           <h1>Bem-vindo de volta</h1>
           <p className="login-subtitle">Entre com seu usuário para acessar o sistema.</p>
 
