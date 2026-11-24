@@ -84,6 +84,12 @@ export default function Navbar() {
         )}
       </nav>
       <div className="navbar-user">
+        <img
+          src="/selfmachine-wide.png"
+          alt="SelfMachine"
+          title="Sistema SelfMachine"
+          className="navbar-selfmachine"
+        />
         <div className="navbar-user-info">
           <span className="navbar-avatar">{initial}</span>
           <span className="navbar-user-text">

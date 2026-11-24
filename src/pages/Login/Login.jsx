@@ -32,6 +32,10 @@ export default function Login() {
         <img src="/logo-full.png" alt="Sabor da Hora" className="login-brand-logo" />
         <h2>Sabor da Hora</h2>
         <p>Loja de salgados · Qualidade & tradição desde 2024</p>
+        <div className="login-selfmachine">
+          <span>Sistema desenvolvido por</span>
+          <img src="/selfmachine-wide.png" alt="SelfMachine" />
+        </div>
       </aside>
 
       <main className="login-main">
