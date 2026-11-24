@@ -12,7 +12,11 @@ function startOfDay(date) {
 
 // Períodos no fuso do navegador (o da loja); o backend recebe o offset pra agrupar igual.
 const PRESETS = [
-  { id: "today", label: "Hoje", range: () => [startOfDay(new Date()), new Date(startOfDay(new Date()).getTime() + DAY_MS)] },
+  {
+    id: "today",
+    label: "Hoje",
+    range: () => [startOfDay(new Date()), new Date(startOfDay(new Date()).getTime() + DAY_MS)],
+  },
   {
     id: "yesterday",
     label: "Ontem",
@@ -21,12 +25,18 @@ const PRESETS = [
   {
     id: "7d",
     label: "7 dias",
-    range: () => [new Date(startOfDay(new Date()).getTime() - 6 * DAY_MS), new Date(startOfDay(new Date()).getTime() + DAY_MS)],
+    range: () => [
+      new Date(startOfDay(new Date()).getTime() - 6 * DAY_MS),
+      new Date(startOfDay(new Date()).getTime() + DAY_MS),
+    ],
   },
   {
     id: "30d",
     label: "30 dias",
-    range: () => [new Date(startOfDay(new Date()).getTime() - 29 * DAY_MS), new Date(startOfDay(new Date()).getTime() + DAY_MS)],
+    range: () => [
+      new Date(startOfDay(new Date()).getTime() - 29 * DAY_MS),
+      new Date(startOfDay(new Date()).getTime() + DAY_MS),
+    ],
   },
   {
     id: "month",
@@ -176,6 +186,11 @@ export default function Reports() {
               <span>Cancelados</span>
               <strong>{report.canceledCount}</strong>
               <small>{formatMoney(report.canceledTotal)}</small>
+            </div>
+            <div className="stat-tile">
+              <span>Descontos</span>
+              <strong>{formatMoney(report.discountTotal ?? 0)}</strong>
+              <small>{report.discountedOrders ?? 0} pedido(s) com desconto</small>
             </div>
           </div>
 

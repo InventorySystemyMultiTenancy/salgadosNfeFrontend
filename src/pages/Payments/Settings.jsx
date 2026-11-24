@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import * as paymentService from "../../services/payment.service";
+import * as storeSettingsService from "../../services/storeSettings.service";
 import { IconChevronDown } from "../../components/icons";
 
 const PROVIDERS = [
@@ -16,6 +17,59 @@ const API_KEY_HINT = {
 
 function formFrom(data) {
   return { provider: data.provider, apiKey: "", accountId: data.accountId ?? "", terminalId: data.terminalId ?? "" };
+}
+
+// Limite de desconto que o vendedor dá sozinho; acima disso o PDV pede senha de administrador.
+function DiscountSettings() {
+  const [value, setValue] = useState("");
+  const [feedback, setFeedback] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    storeSettingsService
+      .fetchStoreSettings()
+      .then((settings) => setValue(String(settings.maxDiscountPercent)))
+      .catch(() => {});
+  }, []);
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setFeedback("");
+    setError("");
+    try {
+      const saved = await storeSettingsService.updateStoreSettings({ maxDiscountPercent: Number(value) });
+      setValue(String(saved.maxDiscountPercent));
+      setFeedback("Limite de desconto salvo.");
+    } catch (err) {
+      setError(err.response?.data?.error || "Erro ao salvar.");
+    }
+  }
+
+  return (
+    <form className="product-form mt-lg" onSubmit={handleSubmit}>
+      <h3>Desconto no PDV</h3>
+      <label htmlFor="max-discount">Desconto máximo que o vendedor pode dar sozinho (%)</label>
+      <input
+        id="max-discount"
+        type="number"
+        min="0"
+        max="100"
+        step="0.5"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        required
+      />
+      <small className="field-hint">
+        Acima disso, o PDV pede o e-mail e a senha de um administrador para liberar. Administrador logado não tem
+        limite. Use 0 para exigir autorização em qualquer desconto.
+      </small>
+      {error && <p className="form-error">{error}</p>}
+      {feedback && <p className="form-success">{feedback}</p>}
+      <div className="form-actions">
+        <button type="submit">Salvar limite</button>
+      </div>
+    </form>
+  );
 }
 
 export default function Settings() {
@@ -117,9 +171,8 @@ export default function Settings() {
     <div className="page">
       <h1>Configurações de Pagamento</h1>
       <p className="cart-empty">
-        Banco da maquininha de cartão integrada ao PDV. Com uma maquininha configurada, as vendas em
-        Débito, Crédito e Pix são enviadas direto para o aparelho e só são registradas depois que o
-        pagamento é aprovado.
+        Banco da maquininha de cartão integrada ao PDV. Com uma maquininha configurada, as vendas em Débito, Crédito e
+        Pix são enviadas direto para o aparelho e só são registradas depois que o pagamento é aprovado.
       </p>
 
       <form className="product-form" onSubmit={handleSubmit}>
@@ -137,9 +190,7 @@ export default function Settings() {
               <IconChevronDown />
             </div>
             {providerChanged && saved.provider !== "NONE" && (
-              <small className="field-hint">
-                Trocar de banco apaga o token e a maquininha do banco anterior.
-              </small>
+              <small className="field-hint">Trocar de banco apaga o token e a maquininha do banco anterior.</small>
             )}
           </div>
           {form.provider !== "NONE" && (
@@ -211,8 +262,8 @@ export default function Settings() {
                     </button>
                   </div>
                   <small className="field-hint">
-                    Na Solo: saia da conta, conecte no Wi-Fi e vá em Conexões &gt; API &gt; Conectar. O
-                    código vale por 5 minutos.
+                    Na Solo: saia da conta, conecte no Wi-Fi e vá em Conexões &gt; API &gt; Conectar. O código vale por
+                    5 minutos.
                   </small>
                 </div>
               </div>
@@ -253,8 +304,8 @@ export default function Settings() {
             )}
             {form.provider === "MERCADO_PAGO" && (
               <small className="field-hint">
-                A maquininha precisa estar em modo PDV para receber as cobranças do sistema. Depois de
-                ativar, reinicie o aparelho.
+                A maquininha precisa estar em modo PDV para receber as cobranças do sistema. Depois de ativar, reinicie
+                o aparelho.
               </small>
             )}
             {form.provider === "SUMUP" && (
@@ -272,6 +323,8 @@ export default function Settings() {
           <button type="submit">Salvar</button>
         </div>
       </form>
+
+      <DiscountSettings />
     </div>
   );
 }

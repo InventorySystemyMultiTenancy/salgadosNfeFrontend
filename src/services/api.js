@@ -14,9 +14,7 @@ api.interceptors.request.use((config) => {
 
 function redirectToLogin() {
   const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-  const loginPath = currentPath.startsWith("/login")
-    ? "/login"
-    : `/login?redirect=${encodeURIComponent(currentPath)}`;
+  const loginPath = currentPath.startsWith("/login") ? "/login" : `/login?redirect=${encodeURIComponent(currentPath)}`;
   window.location.assign(loginPath);
 }
 

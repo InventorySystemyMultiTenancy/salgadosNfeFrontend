@@ -59,6 +59,44 @@ function deliveryLabel(deliveryAt) {
   return formatDateTime(deliveryAt);
 }
 
+// Combo vira a lista do que produzir de fato: "1x Combo Festa" → 50x Coxinha, 50x Kibe. O filtro de
+// categoria olha os componentes (a cozinha produz coxinha, não "combo").
+function expandItem(item, hiddenCategories) {
+  if (!item.product.isCombo) {
+    return hiddenCategories.includes(item.product.category) ? null : { ...item, components: null };
+  }
+  const components = (item.product.comboItems ?? [])
+    .map((comboItem) => ({
+      id: comboItem.component.id,
+      name: comboItem.component.name,
+      category: comboItem.component.category,
+      quantity: comboItem.quantity * item.quantity,
+    }))
+    .filter((component) => !hiddenCategories.includes(component.category));
+  return components.length ? { ...item, components } : null;
+}
+
+function KitchenItems({ items, strongQuantity = false }) {
+  return (
+    <ul>
+      {items.map((item) => (
+        <li key={item.id}>
+          {strongQuantity ? <strong>{item.quantity}x</strong> : `${item.quantity}x`} {item.product.name}
+          {item.components && (
+            <ul className="kitchen-combo-items">
+              {item.components.map((component) => (
+                <li key={component.id}>
+                  ↳ {component.quantity}x {component.name}
+                </li>
+              ))}
+            </ul>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function waitingLabel(minutes) {
   if (minutes < 1) return "agora";
   if (minutes < 60) return `há ${minutes} min`;
@@ -161,13 +199,17 @@ export default function Kitchen() {
 
   const categories = useMemo(() => {
     const all = new Set();
-    for (const order of orders) for (const item of order.items) all.add(item.product.category);
-    for (const preorder of preorders) for (const item of preorder.items) all.add(item.product.category);
+    const addCategories = (item) => {
+      if (item.product.isCombo) for (const c of item.product.comboItems ?? []) all.add(c.component.category);
+      else all.add(item.product.category);
+    };
+    for (const order of orders) order.items.forEach(addCategories);
+    for (const preorder of preorders) preorder.items.forEach(addCategories);
     for (const category of filters.hiddenCategories) all.add(category); // continua aparecendo pra poder religar
     return [...all].filter(Boolean).sort();
   }, [orders, preorders, filters.hiddenCategories]);
 
-  const keepItem = (item) => !filters.hiddenCategories.includes(item.product.category);
+  const expandItems = (items) => items.map((item) => expandItem(item, filters.hiddenCategories)).filter(Boolean);
   const sortByTime = (getTime) => (a, b) =>
     filters.order === "oldest" ? getTime(a) - getTime(b) : getTime(b) - getTime(a);
 
@@ -178,7 +220,7 @@ export default function Kitchen() {
       : orders
           .map((order) => ({
             ...order,
-            items: order.items.filter(keepItem),
+            items: expandItems(order.items),
             waitingMinutes: Math.floor((now - new Date(order.createdAt).getTime()) / MINUTE_MS),
           }))
           .filter((order) => order.items.length > 0)
@@ -194,7 +236,7 @@ export default function Kitchen() {
     filters.show === "orders"
       ? []
       : preorders
-          .map((preorder) => ({ ...preorder, items: preorder.items.filter(keepItem) }))
+          .map((preorder) => ({ ...preorder, items: expandItems(preorder.items) }))
           .filter((preorder) => preorder.items.length > 0)
           .filter(
             (preorder) =>
@@ -211,7 +253,9 @@ export default function Kitchen() {
   const consolidatedCounts = new Map();
   for (const order of visibleOrders) {
     for (const item of order.items) {
-      consolidatedCounts.set(item.product.name, (consolidatedCounts.get(item.product.name) || 0) + item.quantity);
+      for (const { name, quantity } of item.components ?? [{ name: item.product.name, quantity: item.quantity }]) {
+        consolidatedCounts.set(name, (consolidatedCounts.get(name) || 0) + quantity);
+      }
     }
   }
   const consolidated = Array.from(consolidatedCounts.entries()).sort((a, b) => b[1] - a[1]);
@@ -351,13 +395,7 @@ export default function Kitchen() {
                   <span className="kitchen-status-badge">{PREORDER_STATUS_LABEL[preorder.status]}</span>
                 </header>
                 <div className="kitchen-delivery">{deliveryLabel(preorder.deliveryAt)}</div>
-                <ul>
-                  {preorder.items.map((item) => (
-                    <li key={item.id}>
-                      <strong>{item.quantity}x</strong> {item.product.name}
-                    </li>
-                  ))}
-                </ul>
+                <KitchenItems items={preorder.items} strongQuantity />
                 {preorder.notes && <p className="kitchen-notes">{preorder.notes}</p>}
                 <footer>
                   <span className="kitchen-seller">Encomenda #{preorder.id}</span>
@@ -406,13 +444,7 @@ export default function Kitchen() {
             <div className={`kitchen-waiting${order.waitingMinutes >= URGENT_ORDER_MINUTES ? " is-late" : ""}`}>
               {waitingLabel(order.waitingMinutes)}
             </div>
-            <ul>
-              {order.items.map((item) => (
-                <li key={item.id}>
-                  {item.quantity}x {item.product.name}
-                </li>
-              ))}
-            </ul>
+            <KitchenItems items={order.items} />
             <footer>
               <span className="kitchen-seller">Operador: {order.seller?.name}</span>
               {NEXT_STATUS[order.kitchenStatus] && (

@@ -253,7 +253,23 @@ export default function Orders() {
                 <td>{formatDateTime(order.createdAt)}</td>
                 <td>{order.client?.name || "Não identificado"}</td>
                 <td>{PAYMENT_LABEL[order.paymentMethod]}</td>
-                <td className="order-total-cell">{formatMoney(order.totalAmount)}</td>
+                <td className="order-total-cell">
+                  {formatMoney(order.totalAmount)}
+                  {Number(order.discountAmount) > 0 && (
+                    <div
+                      className="order-discount"
+                      title={[
+                        order.discountReason,
+                        order.discountApprovedBy && `autorizado por ${order.discountApprovedBy.name}`,
+                      ]
+                        .filter(Boolean)
+                        .join(" — ")}
+                    >
+                      − {formatMoney(order.discountAmount)} desc.
+                      {order.discountApprovedBy && <span> · aut. {order.discountApprovedBy.name}</span>}
+                    </div>
+                  )}
+                </td>
                 <td>{order.fiscalType ? FISCAL_TYPE_LABEL[order.fiscalType] : "-"}</td>
                 <td style={{ maxWidth: 280, overflowWrap: "break-word" }}>
                   {STATUS_LABEL[order.fiscalStatus]}

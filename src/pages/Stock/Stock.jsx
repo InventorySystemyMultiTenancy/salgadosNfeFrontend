@@ -23,7 +23,8 @@ export default function Stock() {
   const activeTab = tabs.find((tab) => tab.id === searchParams.get("aba")) ?? tabs[0];
 
   function reloadProducts() {
-    return productService.listProducts().then(setProducts);
+    // Combos ficam de fora: o estoque deles é o dos produtos de dentro.
+    return productService.listProducts().then((list) => setProducts(list.filter((product) => !product.isCombo)));
   }
 
   useEffect(() => {

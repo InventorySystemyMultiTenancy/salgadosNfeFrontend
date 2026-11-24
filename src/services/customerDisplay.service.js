@@ -86,11 +86,7 @@ export class CustomerDisplayService {
     try {
       port = await navigator.serial.requestPort();
     } catch (cause) {
-      throw new CustomerDisplayError(
-        DisplayErrorCode.NO_PORT_SELECTED,
-        "Nenhuma porta serial foi selecionada.",
-        cause,
-      );
+      throw new CustomerDisplayError(DisplayErrorCode.NO_PORT_SELECTED, "Nenhuma porta serial foi selecionada.", cause);
     }
 
     await this._openPort(port, options);
@@ -161,10 +157,7 @@ export class CustomerDisplayService {
 
   async _write(bytes) {
     if (!this.isConnected) {
-      throw new CustomerDisplayError(
-        DisplayErrorCode.DISCONNECTED,
-        "Display de cliente não está conectado.",
-      );
+      throw new CustomerDisplayError(DisplayErrorCode.DISCONNECTED, "Display de cliente não está conectado.");
     }
 
     try {

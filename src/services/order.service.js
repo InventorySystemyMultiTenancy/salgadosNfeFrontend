@@ -1,7 +1,14 @@
 import api from "./api";
 
-export async function createOrder({ paymentMethod, clientId, items }) {
-  const { data } = await api.post("/orders", { paymentMethod, clientId, items });
+export async function createOrder({ paymentMethod, clientId, items, terminalPaymentId, discount, approvalToken }) {
+  const { data } = await api.post("/orders", {
+    paymentMethod,
+    clientId,
+    items,
+    terminalPaymentId,
+    discount,
+    approvalToken,
+  });
   return data;
 }
 

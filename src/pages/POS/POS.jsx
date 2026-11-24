@@ -7,6 +7,8 @@ import * as fiscalService from "../../services/fiscal.service";
 import * as paymentService from "../../services/payment.service";
 import * as cashService from "../../services/cash.service";
 import { useCart } from "../../contexts/CartContext";
+import { useAuth } from "../../contexts/AuthContext";
+import * as storeSettingsService from "../../services/storeSettings.service";
 import { useCustomerDisplay } from "../../hooks/useCustomerDisplay";
 import { printReceipt } from "../../utils/receiptPrint";
 import { printReceiptEscPos } from "../../utils/qzPrint";
@@ -30,6 +32,11 @@ const PAYMENT_METHODS = [
 ];
 
 const CHARGE_POLL_MS = 2500;
+const DISCOUNT_REASONS = ["Cliente fiel", "Cortesia", "Produto com defeito", "Quantidade grande"];
+const EMPTY_DISCOUNT = { open: false, mode: "value", input: "", reason: "" };
+
+// Quanto dá pra vender agora: combo = quantos dá pra montar com o estoque dos componentes.
+const available = (product) => product.availableQuantity ?? product.stockQuantity;
 
 function matchesSearch(product, term) {
   if (!term) return true;
@@ -58,17 +65,31 @@ export default function POS() {
   // null = ainda não sabe; false = caixa fechado (mostra aviso, mas não bloqueia a venda).
   const [cashOpen, setCashOpen] = useState(null);
   const registeringRef = useRef(false);
-  const { items, addItem, decreaseItem, removeItem, clearCart, total } = useCart();
+  const { items, addItem, decreaseItem, removeItem, clearCart, total: subtotal } = useCart();
+  const { user } = useAuth();
+  const [maxDiscountPercent, setMaxDiscountPercent] = useState(null);
+  const [discount, setDiscount] = useState(EMPTY_DISCOUNT);
+  // Autorização de desconto acima do limite (token curto do administrador), e o formulário dela.
+  const [approval, setApproval] = useState(null);
+  const [approvalForm, setApprovalForm] = useState({ email: "", password: "" });
+  const [approving, setApproving] = useState(false);
   const display = useCustomerDisplay();
   const searchInputRef = useRef(null);
 
   useEffect(() => {
     productService.listProducts().then(setProducts);
     clientService.listClients().then(setClients);
-    fiscalService.fetchPublicFiscalSettings().then(setCompanyInfo).catch(() => {});
+    fiscalService
+      .fetchPublicFiscalSettings()
+      .then(setCompanyInfo)
+      .catch(() => {});
     paymentService
       .fetchPublicPaymentSettings()
       .then((settings) => setTerminalMethods(settings.methods ?? []))
+      .catch(() => {});
+    storeSettingsService
+      .fetchStoreSettings()
+      .then((settings) => setMaxDiscountPercent(settings.maxDiscountPercent))
       .catch(() => {});
     cashService
       .fetchCurrentCash()
@@ -105,6 +126,24 @@ export default function POS() {
   const isCash = paymentMethod === "CASH";
   const terminalAvailable = terminalMethods.includes(paymentMethod);
   const willUseTerminal = terminalAvailable && useTerminal;
+  // Desconto: digitado em R$ ou %, sempre gravado em R$ (arredondado em centavos).
+  const discountInput = Number(String(discount.input).replace(",", ".")) || 0;
+  const discountValue = Math.min(
+    subtotal,
+    Math.max(
+      0,
+      Math.round((discount.mode === "percent" ? (subtotal * discountInput) / 100 : discountInput) * 100) / 100,
+    ),
+  );
+  const discountPercent = subtotal > 0 ? (discountValue / subtotal) * 100 : 0;
+  const total = Math.round((subtotal - discountValue) * 100) / 100;
+  const needsApproval =
+    discountValue > 0 &&
+    user?.role !== "ADMIN" &&
+    maxDiscountPercent != null &&
+    discountPercent > maxDiscountPercent + 0.001;
+  const approvalValid = Boolean(approval) && approval.amount >= discountValue - 0.009;
+
   const receivedValue = cashReceived === "" ? null : Number(cashReceived);
   const troco = receivedValue != null ? receivedValue - total : null;
 
@@ -117,9 +156,9 @@ export default function POS() {
       if (troco >= 0) display.sendAmount(troco, "troco");
       else display.sendAmount(total, "pagar");
     } else {
-      display.sendAmount(total, "total");
+      display.sendAmount(isCheckoutOpen ? total : subtotal, "total");
     }
-  }, [display.isConnected, total, isCheckoutOpen, isCash, troco]);
+  }, [display.isConnected, total, subtotal, isCheckoutOpen, isCash, troco]);
 
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const filteredProducts = products.filter((product) => matchesSearch(product, normalizedSearch));
@@ -142,7 +181,7 @@ export default function POS() {
         ? filteredProducts[0]
         : null;
 
-    if (match && match.stockQuantity > 0) {
+    if (match && available(match) > 0) {
       addItem(match);
       setSearchTerm("");
     }
@@ -150,6 +189,9 @@ export default function POS() {
 
   function openCheckout() {
     if (items.length === 0) return;
+    setDiscount(EMPTY_DISCOUNT);
+    setApproval(null);
+    setApprovalForm({ email: "", password: "" });
     setError("");
     setFeedback("");
     setLastOrder(null);
@@ -160,6 +202,14 @@ export default function POS() {
     if (items.length === 0) return;
     if (isTab && !clientId) {
       setError("Selecione o cliente para venda fiado.");
+      return;
+    }
+    if (discountValue > 0 && !discount.reason.trim()) {
+      setError("Informe o motivo do desconto.");
+      return;
+    }
+    if (needsApproval && !approvalValid) {
+      setError(`Desconto acima de ${maxDiscountPercent}% — precisa da autorização de um administrador.`);
       return;
     }
 
@@ -223,8 +273,12 @@ export default function POS() {
         clientId: clientId ? Number(clientId) : undefined,
         items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
         terminalPaymentId,
+        discount: discountValue > 0 ? { amount: discountValue, reason: discount.reason.trim() } : undefined,
+        approvalToken: approvalValid ? approval.token : undefined,
       });
       clearCart();
+      setDiscount(EMPTY_DISCOUNT);
+      setApproval(null);
       setClientId("");
       setCashReceived("");
       setCharge(null);
@@ -236,9 +290,7 @@ export default function POS() {
     } catch (err) {
       const message = err.response?.data?.error || "Erro ao registrar a venda.";
       setError(
-        terminalPaymentId
-          ? `Pagamento aprovado na maquininha, mas a venda não foi registrada: ${message}`
-          : message,
+        terminalPaymentId ? `Pagamento aprovado na maquininha, mas a venda não foi registrada: ${message}` : message,
       );
     } finally {
       registeringRef.current = false;
@@ -302,15 +354,14 @@ export default function POS() {
             <h2>{category}</h2>
             <div className="product-grid">
               {categoryProducts.map((product) => {
-                const lowStock =
-                  product.minStockAlert != null && product.stockQuantity <= product.minStockAlert;
+                const lowStock = product.minStockAlert != null && product.stockQuantity <= product.minStockAlert;
                 return (
                   <button
                     type="button"
                     key={product.id}
                     className={`product-card${lowStock ? " product-card-low-stock" : ""}`}
                     onClick={() => addItem(product)}
-                    disabled={product.stockQuantity <= 0}
+                    disabled={available(product) <= 0}
                   >
                     <span className="product-card-photo">
                       <span className="product-code">#{product.id}</span>
@@ -320,11 +371,14 @@ export default function POS() {
                       </span>
                     </span>
                     <span className="product-card-body">
-                      <span className="product-name">{product.name}</span>
+                      <span className="product-name">
+                        {product.isCombo && <span className="combo-badge">Combo</span>}
+                        {product.name}
+                      </span>
                       <span className="product-price">R$ {Number(product.price).toFixed(2)}</span>
                       <span className="product-stock">
                         <IconBox />
-                        Estoque: {product.stockQuantity}
+                        {product.isCombo ? `Dá pra montar: ${available(product)}` : `Estoque: ${product.stockQuantity}`}
                         {lowStock && <span className="low-stock-badge"> baixo</span>}
                       </span>
                     </span>
@@ -350,9 +404,7 @@ export default function POS() {
             </button>
           </div>
         ) : (
-          <p className="display-panel-status">
-            Display de cliente indisponível: use Google Chrome ou Microsoft Edge.
-          </p>
+          <p className="display-panel-status">Display de cliente indisponível: use Google Chrome ou Microsoft Edge.</p>
         )}
         {display.error && <p className="form-error">{display.error.message}</p>}
 
@@ -396,7 +448,7 @@ export default function POS() {
 
         <div className="cart-total">
           <span>Total</span>
-          <strong>R$ {total.toFixed(2)}</strong>
+          <strong>R$ {subtotal.toFixed(2)}</strong>
         </div>
 
         {feedback && (
@@ -410,12 +462,7 @@ export default function POS() {
           </div>
         )}
 
-        <button
-          type="button"
-          className="checkout-button"
-          onClick={openCheckout}
-          disabled={items.length === 0}
-        >
+        <button type="button" className="checkout-button" onClick={openCheckout} disabled={items.length === 0}>
           Cobrar / Fechar Pedido
         </button>
       </aside>
@@ -428,10 +475,157 @@ export default function POS() {
           <div className="checkout-modal" onClick={(e) => e.stopPropagation()}>
             <h2>Fechar Pedido</h2>
 
+            {discountValue > 0 && (
+              <div className="checkout-subtotals">
+                <span>Subtotal</span>
+                <span>R$ {subtotal.toFixed(2)}</span>
+                <span>Desconto ({discountPercent.toFixed(1).replace(".", ",")}%)</span>
+                <span className="checkout-discount-value">− R$ {discountValue.toFixed(2)}</span>
+              </div>
+            )}
             <div className="checkout-modal-total">
               <span>Total</span>
               <strong>R$ {total.toFixed(2)}</strong>
             </div>
+
+            {!discount.open ? (
+              !charge && (
+                <button
+                  type="button"
+                  className="link-button discount-toggle"
+                  onClick={() => setDiscount({ ...discount, open: true })}
+                >
+                  + Aplicar desconto
+                </button>
+              )
+            ) : (
+              <section className="discount-box" aria-label="Desconto">
+                <div className="discount-row">
+                  <div className="segmented segmented-compact" role="radiogroup" aria-label="Tipo de desconto">
+                    {[
+                      ["value", "R$"],
+                      ["percent", "%"],
+                    ].map(([mode, label]) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        role="radio"
+                        aria-checked={discount.mode === mode}
+                        className={discount.mode === mode ? "active" : ""}
+                        disabled={Boolean(charge)}
+                        onClick={() => setDiscount({ ...discount, mode, input: "" })}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    inputMode="decimal"
+                    aria-label={discount.mode === "percent" ? "Desconto em %" : "Desconto em R$"}
+                    placeholder={discount.mode === "percent" ? "Ex: 10" : "Ex: 5,00"}
+                    value={discount.input}
+                    disabled={Boolean(charge)}
+                    onChange={(e) => {
+                      setDiscount({ ...discount, input: e.target.value });
+                      setError("");
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="link-button"
+                    disabled={Boolean(charge)}
+                    onClick={() => {
+                      setDiscount(EMPTY_DISCOUNT);
+                      setApproval(null);
+                    }}
+                  >
+                    Remover
+                  </button>
+                </div>
+                <div className="reason-chips">
+                  {DISCOUNT_REASONS.map((reason) => (
+                    <button
+                      key={reason}
+                      type="button"
+                      className={discount.reason === reason ? "active" : ""}
+                      disabled={Boolean(charge)}
+                      onClick={() => setDiscount({ ...discount, reason })}
+                    >
+                      {reason}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  aria-label="Motivo do desconto"
+                  placeholder="Motivo do desconto"
+                  value={discount.reason}
+                  disabled={Boolean(charge)}
+                  onChange={(e) => setDiscount({ ...discount, reason: e.target.value })}
+                />
+                {maxDiscountPercent != null && !needsApproval && discountValue > 0 && user?.role !== "ADMIN" && (
+                  <small className="field-hint">Dentro do limite de {maxDiscountPercent}% do vendedor.</small>
+                )}
+
+                {needsApproval &&
+                  (approvalValid ? (
+                    <p className="form-success">Desconto autorizado por {approval.approverName}.</p>
+                  ) : (
+                    <div className="discount-approval">
+                      <strong>
+                        Desconto acima de {maxDiscountPercent}% — precisa da autorização de um administrador
+                      </strong>
+                      <div className="form-row">
+                        <input
+                          type="email"
+                          aria-label="E-mail do administrador"
+                          placeholder="E-mail do administrador"
+                          autoComplete="off"
+                          value={approvalForm.email}
+                          onChange={(e) => setApprovalForm({ ...approvalForm, email: e.target.value })}
+                        />
+                        <input
+                          type="password"
+                          aria-label="Senha do administrador"
+                          placeholder="Senha"
+                          autoComplete="new-password"
+                          value={approvalForm.password}
+                          onChange={(e) => setApprovalForm({ ...approvalForm, password: e.target.value })}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className="secondary"
+                        disabled={approving || !approvalForm.email || !approvalForm.password}
+                        onClick={async () => {
+                          setApproving(true);
+                          setError("");
+                          try {
+                            const result = await storeSettingsService.approveDiscount({
+                              ...approvalForm,
+                              discountAmount: discountValue,
+                            });
+                            setApproval({
+                              token: result.approvalToken,
+                              approverName: result.approverName,
+                              amount: discountValue,
+                            });
+                            setApprovalForm({ email: "", password: "" });
+                          } catch (err) {
+                            setError(err.response?.data?.error || "Não foi possível autorizar o desconto.");
+                          } finally {
+                            setApproving(false);
+                          }
+                        }}
+                      >
+                        {approving ? "Conferindo..." : "Autorizar desconto"}
+                      </button>
+                    </div>
+                  ))}
+              </section>
+            )}
 
             <label htmlFor="payment-method">Forma de pagamento</label>
             <div className="select-wrap">
@@ -476,11 +670,7 @@ export default function POS() {
 
             {terminalAvailable && !charge && (
               <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={useTerminal}
-                  onChange={(e) => setUseTerminal(e.target.checked)}
-                />
+                <input type="checkbox" checked={useTerminal} onChange={(e) => setUseTerminal(e.target.checked)} />
                 Cobrar na maquininha integrada
               </label>
             )}
@@ -509,9 +699,7 @@ export default function POS() {
                 </div>
               </div>
             )}
-            {charge?.status === "APPROVED" && (
-              <p className="form-success">Pagamento aprovado na maquininha.</p>
-            )}
+            {charge?.status === "APPROVED" && <p className="form-success">Pagamento aprovado na maquininha.</p>}
 
             {error && <p className="form-error">{error}</p>}
 
@@ -534,7 +722,7 @@ export default function POS() {
                 type="button"
                 className="checkout-button"
                 onClick={handleCheckout}
-                disabled={submitting || chargePending}
+                disabled={submitting || chargePending || (needsApproval && !approvalValid)}
               >
                 {chargePending
                   ? "Aguardando maquininha..."

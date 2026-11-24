@@ -76,6 +76,17 @@ export function buildReceipt(order, { companyName, cnpj } = {}) {
   rows.push({ type: "pair", left: `${itemsCount} ${itemsCount === 1 ? "item" : "itens"}`, right: "" });
   rows.push({ type: "space" });
 
+  const discount = Number(order.discountAmount ?? 0);
+  if (discount > 0) {
+    rows.push({
+      type: "pair",
+      left: "Subtotal",
+      right: money(order.subtotalAmount ?? Number(order.totalAmount) + discount),
+    });
+    rows.push({ type: "pair", left: "Desconto", right: `- ${money(discount)}` });
+    if (order.discountReason) rows.push({ type: "text", text: `  (${order.discountReason})` });
+    rows.push({ type: "space" });
+  }
   rows.push({ type: "pair", left: "TOTAL", right: money(order.totalAmount), bold: true, size: "large" });
   rows.push({ type: "space" });
   rows.push({ type: "pair", left: "Pagamento", right: PAYMENT_LABEL[order.paymentMethod] || order.paymentMethod });
